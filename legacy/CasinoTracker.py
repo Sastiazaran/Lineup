@@ -1,4 +1,6 @@
+"""Retired 2021 Codere scraper. Do not run. Secrets belong in environment variables, not source."""
 from warnings import formatwarning
+import os
 import requests
 from bs4 import BeautifulSoup
 import smtplib
@@ -213,15 +215,15 @@ def send_mail():
     server.starttls()
     server.ehlo()
 
-    server.login('Sastiazaran2000@gmail.com', 'kzvewgobasjcagbd')
+    server.login(os.environ["GMAIL_USER"], os.environ["GMAIL_APP_PASSWORD"])
     subject = 'Casino Info'
     body = 'LIGA MX' + '\n' +  AcquisitionsMX() + "\n" +"Check: https://sports.codere.mx/es_MX/t/45349/Liga-MX" + "\n" + '---------------------------------------------------------------------------------' + '\n' + 'BOXING' + '\n' + AcquisitionsBOX() +  "\n" +"Check: https://sports.codere.mx/es_MX/s/BOXI/Boxeo" + "\n"
         
     msg = f"subject: {subject}\n\n{body}"
 
     server.sendmail(
-        'Sastiazaran2000@gmail.com',
-        'lolmasteryolo993@gmail.com',
+        os.environ["GMAIL_USER"],
+        os.environ["GMAIL_TO"],
         msg
 
     )

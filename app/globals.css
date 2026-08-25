@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --field: #146c3a;
+  --field-deep: #0b2f1c;
+  --lime: #d4f06a;
+  --ink: #132016;
+  --paper: #eef5e6;
+  --mist: #c5d6c0;
+  --clay: #e07a3d;
+}
+
+@theme inline {
+  --color-field: var(--field);
+  --color-field-deep: var(--field-deep);
+  --color-lime: var(--lime);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-mist: var(--mist);
+  --color-clay: var(--clay);
+  --font-display: var(--font-oswald);
+  --font-sans: var(--font-karla);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--paper);
+  font-family: var(--font-karla), sans-serif;
+  background-color: var(--field-deep);
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 46px,
+      rgb(255 255 255 / 0.04) 46px,
+      rgb(255 255 255 / 0.04) 48px
+    ),
+    radial-gradient(1000px 480px at 8% -8%, #1f8a4c 0%, transparent 58%),
+    linear-gradient(165deg, #0f3d24 0%, #146c3a 46%, #0b2f1c 100%);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+.brand {
+  font-family: var(--font-oswald), sans-serif;
+}
