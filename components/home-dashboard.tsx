@@ -6,10 +6,11 @@ import type { Favorite } from "@/lib/favorites";
 import { readGuestFavorites, writeGuestFavorites } from "@/lib/guest-client";
 import { TEAM_ROSTERS } from "@/lib/teams";
 import { InsightsPanel, type DigestView } from "@/components/insights-panel";
+import { ParlayPanel } from "@/components/parlay-panel";
 import { SignOutButton } from "@/components/sign-out-button";
 import { TeamPicker } from "@/components/team-picker";
 
-type Tab = "insights" | "teams";
+type Tab = "insights" | "parlay" | "teams";
 
 type PreviewResponse = {
   error?: string;
@@ -151,6 +152,17 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
         </button>
         <button
           type="button"
+          onClick={() => setTab("parlay")}
+          className={`border-b-2 pb-3 font-display text-xl tracking-wide transition-colors ${
+            tab === "parlay"
+              ? "border-lime text-lime"
+              : "border-transparent text-mist hover:text-paper"
+          }`}
+        >
+          Parlay
+        </button>
+        <button
+          type="button"
           onClick={() => setTab("teams")}
           className={`border-b-2 pb-3 font-display text-xl tracking-wide transition-colors ${
             tab === "teams"
@@ -172,6 +184,13 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
               isGuest={isGuest}
               selectedCount={selected.length}
             />
+          </div>
+        </div>
+      ) : tab === "parlay" ? (
+        <div className="mt-10">
+          <h1 className="font-display text-4xl tracking-wide text-paper sm:text-5xl">League parlay</h1>
+          <div className="mt-8">
+            <ParlayPanel digest={digest} favorites={selected} message={message} />
           </div>
         </div>
       ) : (

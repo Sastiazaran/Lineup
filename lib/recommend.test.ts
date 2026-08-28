@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { OddsEvent } from "@/lib/odds";
 import {
   buildDigest,
+  buildParlaySuggestion,
   consensusByName,
   impliedProbability,
   normalizeWinProbabilities,
@@ -181,5 +182,49 @@ describe("buildDigest", () => {
       now,
     );
     expect(digest.parlay).toBeNull();
+  });
+
+  it("builds a parlay scoped to a single league when sportKey is provided", () => {
+    const eplArsenalChelsea = event({
+      id: "epl-1",
+      sport_key: "soccer_epl",
+      sport_title: "EPL",
+      home_team: "Arsenal",
+      away_team: "Chelsea",
+      bookmakers: americaGuada.bookmakers,
+    });
+    const eplLiverpoolEverton = event({
+      id: "epl-2",
+      sport_key: "soccer_epl",
+      sport_title: "EPL",
+      home_team: "Liverpool",
+      away_team: "Everton",
+      commence_time: "2026-08-26T17:00:00.000Z",
+      bookmakers: pumasToluca.bookmakers,
+    });
+
+    const digest = buildDigest(
+      [americaGuada, pumasToluca, eplArsenalChelsea, eplLiverpoolEverton],
+      [
+        { sportKey: "soccer_mexico_ligamx", teamName: "Club America" },
+        { sportKey: "soccer_mexico_ligamx", teamName: "Toluca" },
+        { sportKey: "soccer_epl", teamName: "Arsenal" },
+        { sportKey: "soccer_epl", teamName: "Liverpool" },
+      ],
+      now,
+    );
+
+    expect(digest.parlay?.legs.some((leg) => leg.sportTitle === "EPL")).toBe(false);
+
+    const eplParlay = buildParlaySuggestion(digest.games, [
+      { sportKey: "soccer_mexico_ligamx", teamName: "Club America" },
+      { sportKey: "soccer_mexico_ligamx", teamName: "Toluca" },
+      { sportKey: "soccer_epl", teamName: "Arsenal" },
+      { sportKey: "soccer_epl", teamName: "Liverpool" },
+    ], { sportKey: "soccer_epl" });
+
+    expect(eplParlay?.legs).toHaveLength(2);
+    expect(eplParlay?.legs.every((leg) => leg.sportTitle === "EPL")).toBe(true);
+    expect(eplParlay?.explanation).toContain("EPL");
   });
 });

@@ -189,11 +189,22 @@ function winOutcomeForTeam(
 export function buildParlaySuggestion(
   games: GamePreview[],
   favorites: FavoriteTeam[],
+  options?: { sportKey?: string },
 ): ParlaySuggestion | null {
+  const sportKey = options?.sportKey;
+  const scopedGames = sportKey ? games.filter((game) => game.event.sport_key === sportKey) : games;
+  const scopedFavorites = sportKey
+    ? favorites.filter((favorite) => favorite.sportKey === sportKey)
+    : favorites;
+  const leagueLabel =
+    sportKey && scopedGames[0]
+      ? scopedGames[0].event.sport_title
+      : undefined;
+
   const legs: ParlayLeg[] = [];
 
-  for (const game of games) {
-    const favoriteTeams = favorites.filter(
+  for (const game of scopedGames) {
+    const favoriteTeams = scopedFavorites.filter(
       (favorite) =>
         favorite.sportKey === game.event.sport_key &&
         (teamsMatch(favorite.teamName, game.event.home_team) ||
@@ -251,7 +262,7 @@ export function buildParlaySuggestion(
         legs: combo,
         combinedProbability,
         combinedDecimalOdds,
-        explanation: parlayExplanation(combo, combinedProbability),
+        explanation: parlayExplanation(combo, combinedProbability, leagueLabel),
       };
     }
   }
@@ -259,12 +270,15 @@ export function buildParlaySuggestion(
   return bestParlay;
 }
 
-function parlayExplanation(legs: ParlayLeg[], combinedProbability: number): string {
+function parlayExplanation(legs: ParlayLeg[], combinedProbability: number, leagueLabel?: string): string {
   const legSummaries = legs
     .map((leg) => `${leg.teamName} (${Math.round(leg.winProbability * 100)}%)`)
     .join(", ");
   const combinedPct = Math.round(combinedProbability * 100);
-  return `These are your strongest favorites this window — ${legSummaries} — with a combined win chance of about ${combinedPct}%. All legs need to hit for the parlay to cash.`;
+  const intro = leagueLabel
+    ? `Your ${leagueLabel} parlay from your lineup`
+    : "These are your strongest favorites this window";
+  return `${intro} — ${legSummaries} — with a combined win chance of about ${combinedPct}%. All legs need to hit for the parlay to cash.`;
 }
 
 /**
