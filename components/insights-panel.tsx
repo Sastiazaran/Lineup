@@ -192,7 +192,7 @@ export function InsightsPanel({ digest, message, isGuest, selectedCount }: Insig
             ) : null}
             {filtered.parlay ? (
               <div className="max-w-2xl rounded border border-white/15 p-4">
-                <h3 className="font-display text-xl tracking-wide text-lime">Parlay idea</h3>
+                <h3 className="font-display text-xl tracking-wide text-lime">🔒 Parlay idea</h3>
                 <ul className="mt-3 flex flex-col gap-1 text-paper">
                   {filtered.parlay.legs.map((leg) => (
                     <li key={`${leg.teamName}-${leg.opponent}`}>

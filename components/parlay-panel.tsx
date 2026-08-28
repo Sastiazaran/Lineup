@@ -83,7 +83,7 @@ export function ParlayPanel({ digest, favorites, message }: ParlayPanelProps) {
       {parlay ? (
         <section className="rounded border border-white/15 p-4">
           <h2 className="font-display text-xl tracking-wide text-lime">
-            {selectedLabel ? `${selectedLabel} parlay` : "Parlay idea"}
+            {selectedLabel ? `🔒 ${selectedLabel} parlay` : "🔒 Parlay idea"}
           </h2>
           <ul className="mt-4 flex flex-col gap-3 text-paper">
             {parlay.legs.map((leg) => (
