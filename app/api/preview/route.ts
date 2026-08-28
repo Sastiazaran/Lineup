@@ -61,6 +61,7 @@ function serializeDigest(digest: ReturnType<typeof buildDigest>) {
     recommendation: digest.recommendation
       ? {
           teamName: digest.recommendation.teamName,
+          sportKey: digest.recommendation.event.sport_key,
           sportTitle: digest.recommendation.event.sport_title,
           homeTeam: digest.recommendation.event.home_team,
           awayTeam: digest.recommendation.event.away_team,
@@ -69,13 +70,16 @@ function serializeDigest(digest: ReturnType<typeof buildDigest>) {
           spread: digest.recommendation.spread,
         }
       : null,
+    parlay: digest.parlay,
     games: digest.games.map((game) => ({
+      sportKey: game.event.sport_key,
       sportTitle: game.event.sport_title,
       homeTeam: game.event.home_team,
       awayTeam: game.event.away_team,
       commenceTime: game.event.commence_time,
       lines: game.lines,
       spreads: game.spreads,
+      winProbabilities: game.winProbabilities,
     })),
   };
 }
