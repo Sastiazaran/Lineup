@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { CookieName, Routes } from "@/lib/constants";
 import { getDb } from "@/lib/db";
 import { magicLinks, users } from "@/lib/db/schema";
+import { clearGuestCookie } from "@/lib/guest-server";
 import { createSessionToken, hashToken, sessionCookieOptions } from "@/lib/session";
 
 /**
@@ -45,5 +46,6 @@ export async function GET(request: Request) {
 
   const response = NextResponse.redirect(new URL(Routes.Home, url.origin));
   response.cookies.set(CookieName.Session, createSessionToken(user.id, user.email), sessionCookieOptions());
+  clearGuestCookie(response);
   return response;
 }

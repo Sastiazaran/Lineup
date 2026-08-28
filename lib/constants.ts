@@ -10,6 +10,11 @@ export const Brand = {
 
 export const CookieName = {
   Session: "lineup_session",
+  Guest: "lineup_guest",
+} as const;
+
+export const StorageKey = {
+  GuestFavorites: "lineup_guest_favorites",
 } as const;
 
 export const Routes = {
@@ -20,6 +25,7 @@ export const Routes = {
   AuthLogin: "/api/auth/login",
   AuthCallback: "/api/auth/callback",
   AuthLogout: "/api/auth/logout",
+  AuthGuest: "/api/auth/guest",
   Favorites: "/api/favorites",
   Preview: "/api/preview",
   CronDigest: "/api/cron/digest",

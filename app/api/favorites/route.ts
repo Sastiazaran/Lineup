@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { getSession } from "@/lib/auth";
 import { Routes, SPORTS } from "@/lib/constants";
 import { getDb } from "@/lib/db";
 import { favorites } from "@/lib/db/schema";
-import { getSession } from "@/lib/auth";
+import { cleanFavorites } from "@/lib/favorites";
 
 const allowedSports = new Set<string>(SPORTS.map((sport) => sport.key));
 
@@ -33,17 +34,7 @@ export async function PUT(request: Request) {
   const body = (await request.json()) as {
     favorites?: { sportKey?: string; teamName?: string }[];
   };
-  const incoming = body.favorites ?? [];
-  const cleaned = incoming
-    .map((item) => ({
-      sportKey: item.sportKey?.trim() ?? "",
-      teamName: item.teamName?.trim() ?? "",
-    }))
-    .filter((item) => item.sportKey && item.teamName && allowedSports.has(item.sportKey));
-
-  const unique = [
-    ...new Map(cleaned.map((item) => [`${item.sportKey}:${item.teamName}`, item])).values(),
-  ];
+  const unique = cleanFavorites(body.favorites).filter((item) => allowedSports.has(item.sportKey));
 
   const db = getDb();
   await db.delete(favorites).where(eq(favorites.userId, session.userId));

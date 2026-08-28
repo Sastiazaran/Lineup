@@ -1,4 +1,6 @@
-import { Brand } from "@/lib/constants";
+import { Brand, Routes } from "@/lib/constants";
+import { getAppAccess } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 
 export default async function LoginPage({
@@ -6,6 +8,11 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ sent?: string; error?: string }>;
 }) {
+  const access = await getAppAccess();
+  if (access) {
+    redirect(Routes.Home);
+  }
+
   const params = await searchParams;
 
   return (
