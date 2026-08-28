@@ -60,6 +60,11 @@ export const SportKey = {
   Epl: "soccer_epl",
   LaLiga: "soccer_spain_la_liga",
   LigaMx: "soccer_mexico_ligamx",
+  Bundesliga: "soccer_germany_bundesliga",
+  Ligue1: "soccer_france_ligue_one",
+  Eredivisie: "soccer_netherlands_eredivisie",
+  ChampionsLeague: "soccer_uefa_champs_league",
+  SerieA: "soccer_italy_serie_a",
 } as const;
 
 export type SportKey = (typeof SportKey)[keyof typeof SportKey];
@@ -69,6 +74,11 @@ export const SPORTS = [
   { key: SportKey.Nba, label: "NBA", group: "Basketball" },
   { key: SportKey.Epl, label: "Premier League", group: "Soccer" },
   { key: SportKey.LaLiga, label: "La Liga", group: "Soccer" },
+  { key: SportKey.Bundesliga, label: "Bundesliga", group: "Soccer" },
+  { key: SportKey.Ligue1, label: "Ligue 1", group: "Soccer" },
+  { key: SportKey.SerieA, label: "Serie A", group: "Soccer" },
+  { key: SportKey.Eredivisie, label: "Eredivisie", group: "Soccer" },
+  { key: SportKey.ChampionsLeague, label: "Champions League", group: "Soccer" },
   { key: SportKey.LigaMx, label: "Liga MX", group: "Soccer" },
 ] as const;
 
