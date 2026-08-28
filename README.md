@@ -30,7 +30,7 @@ Email goes out daily (Vercel Cron at 14:00 UTC) only when a favorite team has a 
 
 1. Import the GitHub repo in Vercel.
 2. Add the same env vars (`ODDS_API_KEY`, `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `SESSION_SECRET`, `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`).
-3. Set `NEXT_PUBLIC_APP_URL` to the production origin (no trailing slash), e.g. `https://lineup-uif.vercel.app`.
+3. Set `NEXT_PUBLIC_APP_URL` to the production origin (no trailing slash), e.g. `https://lineup-sastiazaran.vercel.app`.
 4. Cron is declared in `vercel.json`. Hobby plans allow one cron; this app uses that slot.
 5. After the first deploy, sign in, save a lineup, then trigger `/api/cron/digest` with `Authorization: Bearer $CRON_SECRET` to smoke-test mail.
 
