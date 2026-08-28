@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Routes, type SportKey } from "@/lib/constants";
 import type { Favorite } from "@/lib/favorites";
 import { readGuestFavorites, writeGuestFavorites } from "@/lib/guest-client";
@@ -26,13 +26,23 @@ type HomeDashboardProps = {
 export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardProps) {
   const isGuest = mode === "guest";
   const [tab, setTab] = useState<Tab>("insights");
-  const [selected, setSelected] = useState<Favorite[]>(() =>
-    isGuest ? readGuestFavorites() : initialFavorites,
-  );
+  const [selected, setSelected] = useState<Favorite[]>(initialFavorites);
+  const [guestReady, setGuestReady] = useState(!isGuest);
   const [teams, setTeams] = useState<Record<string, string[]>>(TEAM_ROSTERS);
   const [digest, setDigest] = useState<DigestView>();
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+  const previewLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isGuest) {
+      return;
+    }
+    setSelected(readGuestFavorites());
+    setGuestReady(true);
+  }, [isGuest]);
 
   const loadPreview = useCallback(
     async (favorites: Favorite[]) => {
@@ -54,8 +64,12 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
   );
 
   useEffect(() => {
+    if (!guestReady || previewLoadedRef.current) {
+      return;
+    }
+    previewLoadedRef.current = true;
     let cancelled = false;
-    loadPreview(selected)
+    loadPreview(selectedRef.current)
       .catch(() => {
         if (!cancelled) {
           setMessage("Could not load live odds yet. You can still pick teams.");
@@ -64,9 +78,7 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
     return () => {
       cancelled = true;
     };
-    // Preview loads on mount only; save() refreshes after lineup changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadPreview]);
+  }, [loadPreview, guestReady]);
 
   function toggle(sportKey: SportKey, teamName: string) {
     setSelected((current) => {

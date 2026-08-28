@@ -8,10 +8,13 @@ import {
   gamePassesFilters,
   isAllLeaguesSelected,
   isSomeLeaguesSelected,
+  leaguesForFilter,
   spreadBoundsFromGames,
+  syncLeagueSelection,
   toggleAllLeagues,
   toggleLeagueInSelection,
 } from "@/lib/insights-filters";
+import { SPORTS } from "@/lib/constants";
 
 const now = new Date("2026-08-26T12:00:00.000Z");
 
@@ -121,6 +124,22 @@ describe("league selection helpers", () => {
     expect(next).toEqual(["soccer_mexico_ligamx"]);
   });
 
+  it("filters stepwise when deselecting leagues one by one from full selection", () => {
+    const digest = sampleDigest();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    let leagues = [...allLeagues];
+
+    const keysAfterEachUncheck: string[][] = [];
+    for (const key of allLeagues) {
+      leagues = toggleLeagueInSelection(key, leagues, allLeagues);
+      const filtered = applyInsightsFilters(digest, { ...defaultFilterState(allLeagues), leagues }, now);
+      keysAfterEachUncheck.push(filtered.games.map((game) => game.sportKey));
+    }
+
+    expect(keysAfterEachUncheck[0]?.every((key) => key === "americanfootball_nfl")).toBe(true);
+    expect(keysAfterEachUncheck[1]).toEqual([]);
+  });
+
   it("filters out all games when no leagues are selected", () => {
     const digest = sampleDigest();
     const filters = defaultFilterState(allLeagues);
@@ -139,7 +158,75 @@ describe("spreadBoundsFromGames", () => {
   });
 });
 
+describe("leaguesForFilter", () => {
+  it("includes every configured league even when the digest has no games for it", () => {
+    const digest = sampleDigest();
+    const leagues = leaguesForFilter(digest.games);
+
+    expect(leagues).toHaveLength(SPORTS.length);
+    expect(leagues.some((league) => league.sportKey === "soccer_italy_serie_a")).toBe(true);
+    expect(leagues.some((league) => league.sportKey === "baseball_mlb")).toBe(true);
+    expect(leagues.some((league) => league.sportKey === "soccer_mexico_ligamx")).toBe(true);
+    expect(leagues.find((league) => league.sportKey === "soccer_mexico_ligamx")?.sportTitle).toBe("Liga MX");
+  });
+
+  it("uses configured labels when a league has no games in the digest", () => {
+    const leagues = leaguesForFilter([]);
+
+    expect(leagues.find((league) => league.sportKey === "soccer_italy_serie_a")?.sportTitle).toBe("Serie A");
+    expect(leagues.find((league) => league.sportKey === "baseball_mlb")?.sportTitle).toBe("MLB");
+  });
+});
+
+describe("syncLeagueSelection", () => {
+  it("preserves partial selection when the catalog grows", () => {
+    const partial = ["soccer_germany_bundesliga"];
+    const expanded = SPORTS.map((sport) => sport.key);
+
+    expect(syncLeagueSelection(partial, expanded)).toEqual(partial);
+  });
+
+  it("expands to the full catalog when all leagues were selected", () => {
+    const previousCatalog = ["soccer_germany_bundesliga", "soccer_epl"];
+    const expanded = SPORTS.map((sport) => sport.key);
+
+    expect(syncLeagueSelection(previousCatalog, previousCatalog)).toEqual(previousCatalog);
+    expect(syncLeagueSelection(expanded.slice(0, 2), expanded.slice(0, 2))).toEqual(expanded.slice(0, 2));
+    expect(syncLeagueSelection(expanded, expanded)).toEqual(expanded);
+  });
+});
+
 describe("filterDigestGames", () => {
+  it("filters to a single configured league from the full catalog", () => {
+    const digest = sampleDigest();
+    const allLeagues = SPORTS.map((sport) => sport.key);
+    const filters = defaultFilterState(allLeagues);
+    filters.leagues = ["soccer_germany_bundesliga"];
+
+    const games = filterDigestGames(
+      [
+        ...digest.games,
+        {
+          sportKey: "soccer_germany_bundesliga",
+          sportTitle: "Bundesliga - Germany",
+          homeTeam: "Bayern Munich",
+          awayTeam: "Dortmund",
+          commenceTime: "2026-08-26T18:00:00.000Z",
+          lines: [],
+          spreads: [],
+          winProbabilities: {
+            home: { name: "Bayern Munich", probability: 0.6, decimalOdds: 1.6 },
+            away: { name: "Dortmund", probability: 0.4, decimalOdds: 2.4 },
+          },
+        },
+      ],
+      filters,
+      allLeagues,
+    );
+
+    expect(games).toHaveLength(1);
+    expect(games[0]?.sportKey).toBe("soccer_germany_bundesliga");
+  });
   it("filters by league selection", () => {
     const digest = sampleDigest();
     const filters = defaultFilterState(["americanfootball_nfl"]);

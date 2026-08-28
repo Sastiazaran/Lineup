@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   explainSpread,
   formatOdds,
@@ -11,9 +11,12 @@ import {
 import {
   applyInsightsFilters,
   defaultFilterState,
-  leaguesFromGames,
+  DEFAULT_SPREAD_MAX,
+  DEFAULT_SPREAD_MIN,
+  leaguesForFilter,
   readStoredFilters,
   spreadBoundsFromGames,
+  syncLeagueSelection,
   type InsightsFilterState,
 } from "@/lib/insights-filters";
 import { InsightsFiltersSidebar } from "@/components/insights-filters-sidebar";
@@ -76,7 +79,7 @@ type InsightsPanelProps = {
 };
 
 function buildInitialFilters(games: DigestView["games"], stored: Partial<InsightsFilterState> | null): InsightsFilterState {
-  const leagueKeys = leaguesFromGames(games).map((league) => league.sportKey);
+  const leagueKeys = leaguesForFilter(games).map((league) => league.sportKey);
   const spreadBounds = spreadBoundsFromGames(games);
   const base = defaultFilterState(leagueKeys);
   base.spreadMin = spreadBounds.min;
@@ -86,8 +89,10 @@ function buildInitialFilters(games: DigestView["games"], stored: Partial<Insight
     return base;
   }
 
+  const storedLeagues = Array.isArray(stored.leagues) ? stored.leagues.filter((key) => leagueKeys.includes(key)) : leagueKeys;
+
   return {
-    leagues: stored.leagues?.length ? stored.leagues.filter((key) => leagueKeys.includes(key)) : leagueKeys,
+    leagues: storedLeagues,
     probabilityMin: stored.probabilityMin ?? base.probabilityMin,
     probabilityMax: stored.probabilityMax ?? base.probabilityMax,
     spreadMin: stored.spreadMin ?? spreadBounds.min,
@@ -99,24 +104,37 @@ function buildInitialFilters(games: DigestView["games"], stored: Partial<Insight
 export function InsightsPanel({ digest, message, isGuest, selectedCount }: InsightsPanelProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filters, setFilters] = useState<InsightsFilterState>(() =>
-    buildInitialFilters(digest?.games ?? [], readStoredFilters()),
+    buildInitialFilters(digest?.games ?? [], null),
   );
+  const storedFiltersHydratedRef = useRef(false);
 
   const games = digest?.games ?? [];
 
   useEffect(() => {
-    setFilters((current) => {
-      const next = buildInitialFilters(games, current);
-      const leagueKeys = leaguesFromGames(games).map((league) => league.sportKey);
-      if (current.leagues.length > 0 && current.leagues.length < leagueKeys.length) {
-        next.leagues = current.leagues.filter((key) => leagueKeys.includes(key));
+    const gamesForFilters = digest?.games ?? [];
+    const leagueKeys = leaguesForFilter(gamesForFilters).map((league) => league.sportKey);
+    const spreadBounds = spreadBoundsFromGames(gamesForFilters);
+
+    if (!storedFiltersHydratedRef.current) {
+      storedFiltersHydratedRef.current = true;
+      const stored = readStoredFilters();
+      if (stored) {
+        setFilters(buildInitialFilters(gamesForFilters, stored));
+        return;
       }
-      next.probabilityMin = current.probabilityMin;
-      next.probabilityMax = current.probabilityMax;
-      next.datePreset = current.datePreset;
-      return next;
-    });
-  }, [games]);
+    }
+
+    if (!digest?.games) {
+      return;
+    }
+
+    setFilters((current) => ({
+      ...current,
+      leagues: syncLeagueSelection(current.leagues, leagueKeys),
+      spreadMin: current.spreadMin === DEFAULT_SPREAD_MIN ? spreadBounds.min : current.spreadMin,
+      spreadMax: current.spreadMax === DEFAULT_SPREAD_MAX ? spreadBounds.max : current.spreadMax,
+    }));
+  }, [digest?.games]);
 
   const filtered = useMemo(() => applyInsightsFilters(digest, filters), [digest, filters]);
 

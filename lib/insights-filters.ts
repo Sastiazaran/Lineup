@@ -1,4 +1,5 @@
 import type { DigestView } from "@/components/insights-panel";
+import { SPORTS } from "@/lib/constants";
 
 export type DatePreset = "all" | "today" | "this-week";
 
@@ -60,6 +61,15 @@ export function leaguesFromGames(games: DigestView["games"]): { sportKey: string
     .sort((a, b) => a.sportTitle.localeCompare(b.sportTitle));
 }
 
+/** All configured leagues for the filter UI, preferring live sport titles from the digest when present. */
+export function leaguesForFilter(games: DigestView["games"]): { sportKey: string; sportTitle: string }[] {
+  const titlesFromGames = new Map(leaguesFromGames(games).map((league) => [league.sportKey, league.sportTitle]));
+  return SPORTS.map((sport) => ({
+    sportKey: sport.key,
+    sportTitle: titlesFromGames.get(sport.key) ?? sport.label,
+  })).sort((a, b) => a.sportTitle.localeCompare(b.sportTitle));
+}
+
 function gameOutcomeProbabilitiesPercent(game: DigestView["games"][number]): number[] {
   const outcomes = [game.winProbabilities.home, game.winProbabilities.away];
   if (game.winProbabilities.draw) {
@@ -90,6 +100,17 @@ export function getEffectiveLeagueSelection(leagues: string[], allLeagues: strin
   return isAllLeaguesSelected(leagues, allLeagues) ? allLeagues : leagues;
 }
 
+/** Keep league selection valid when the catalog changes; expand to full list when all were selected. */
+export function syncLeagueSelection(leagues: string[], allLeagues: string[]): string[] {
+  if (leagues.length === 0) {
+    return [];
+  }
+  if (isAllLeaguesSelected(leagues, allLeagues)) {
+    return [...allLeagues];
+  }
+  return leagues.filter((key) => allLeagues.includes(key));
+}
+
 export function toggleLeagueInSelection(
   sportKey: string,
   leagues: string[],
@@ -106,10 +127,7 @@ export function toggleAllLeagues(leagues: string[], allLeagues: string[]): strin
   return isAllLeaguesSelected(leagues, allLeagues) ? [] : [...allLeagues];
 }
 
-function matchesLeague(game: DigestView["games"][number], leagues: string[], allLeagues: string[]): boolean {
-  if (isAllLeaguesSelected(leagues, allLeagues)) {
-    return true;
-  }
+function matchesLeague(game: DigestView["games"][number], leagues: string[]): boolean {
   if (leagues.length === 0) {
     return false;
   }
@@ -159,7 +177,7 @@ export function gamePassesFilters(
   now = new Date(),
 ): boolean {
   return (
-    matchesLeague(game, filters.leagues, allLeagues) &&
+    matchesLeague(game, filters.leagues) &&
     matchesProbability(game, filters.probabilityMin, filters.probabilityMax) &&
     matchesSpread(game, filters.spreadMin, filters.spreadMax) &&
     matchesDate(game, filters.datePreset, now)
@@ -266,7 +284,7 @@ export function applyInsightsFilters(
     return { recommendation: null, parlay: null, games: [] };
   }
 
-  const allLeagues = leaguesFromGames(digest.games).map((league) => league.sportKey);
+  const allLeagues = leaguesForFilter(digest.games).map((league) => league.sportKey);
   const games = filterDigestGames(digest.games, filters, allLeagues, now);
 
   const recommendation = recommendationMatchesFilters(digest, filters, allLeagues, now)

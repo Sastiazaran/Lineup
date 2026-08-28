@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import type { DigestView } from "@/components/insights-panel";
 import { RangeSlider } from "@/components/range-slider";
 import {
@@ -8,7 +8,7 @@ import {
   defaultFilterState,
   isAllLeaguesSelected,
   isSomeLeaguesSelected,
-  leaguesFromGames,
+  leaguesForFilter,
   spreadBoundsFromGames,
   toggleAllLeagues,
   toggleLeagueInSelection,
@@ -19,7 +19,7 @@ import {
 type InsightsFiltersSidebarProps = {
   games: DigestView["games"];
   filters: InsightsFilterState;
-  onChange: (filters: InsightsFilterState) => void;
+  onChange: Dispatch<SetStateAction<InsightsFilterState>>;
   open: boolean;
   onToggle: () => void;
 };
@@ -37,7 +37,7 @@ export function InsightsFiltersSidebar({
   open,
   onToggle,
 }: InsightsFiltersSidebarProps) {
-  const leagues = useMemo(() => leaguesFromGames(games), [games]);
+  const leagues = useMemo(() => leaguesForFilter(games), [games]);
   const spreadBounds = useMemo(() => spreadBoundsFromGames(games), [games]);
   const allLeagueKeys = useMemo(() => leagues.map((league) => league.sportKey), [leagues]);
   const activeCount = countActiveFilters(filters, allLeagueKeys, spreadBounds);
@@ -56,21 +56,21 @@ export function InsightsFiltersSidebar({
   }, [someLeaguesSelected]);
 
   function toggleLeague(sportKey: string) {
-    onChange({
-      ...filters,
-      leagues: toggleLeagueInSelection(sportKey, filters.leagues, allLeagueKeys),
-    });
+    onChange((current) => ({
+      ...current,
+      leagues: toggleLeagueInSelection(sportKey, current.leagues, allLeagueKeys),
+    }));
   }
 
   function isLeagueChecked(sportKey: string): boolean {
-    if (isAllLeaguesSelected(filters.leagues, allLeagueKeys)) {
-      return true;
-    }
     return filters.leagues.includes(sportKey);
   }
 
   function toggleSelectAllLeagues() {
-    onChange({ ...filters, leagues: toggleAllLeagues(filters.leagues, allLeagueKeys) });
+    onChange((current) => ({
+      ...current,
+      leagues: toggleAllLeagues(current.leagues, allLeagueKeys),
+    }));
   }
 
   function resetFilters() {
@@ -126,8 +126,10 @@ export function InsightsFiltersSidebar({
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <div className="flex flex-col gap-6">
             <section>
-              <h3 className="mb-3 text-xs uppercase tracking-wider text-mist">League</h3>
-              <ul className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+              <h3 className="mb-3 text-xs uppercase tracking-wider text-mist">
+                League <span className="normal-case text-mist/80">({leagues.length})</span>
+              </h3>
+              <ul className="flex flex-col gap-2">
                 <li>
                   <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-paper">
                     <input
