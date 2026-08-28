@@ -74,9 +74,44 @@ function gameSpreadPoints(game: DigestView["games"][number]): number[] {
     .filter((point): point is number => typeof point === "number");
 }
 
+export function isAllLeaguesSelected(leagues: string[], allLeagues: string[]): boolean {
+  return (
+    allLeagues.length > 0 &&
+    leagues.length === allLeagues.length &&
+    allLeagues.every((key) => leagues.includes(key))
+  );
+}
+
+export function isSomeLeaguesSelected(leagues: string[], allLeagues: string[]): boolean {
+  return leagues.length > 0 && leagues.length < allLeagues.length;
+}
+
+export function getEffectiveLeagueSelection(leagues: string[], allLeagues: string[]): string[] {
+  return isAllLeaguesSelected(leagues, allLeagues) ? allLeagues : leagues;
+}
+
+export function toggleLeagueInSelection(
+  sportKey: string,
+  leagues: string[],
+  allLeagues: string[],
+): string[] {
+  const current = getEffectiveLeagueSelection(leagues, allLeagues);
+  const next = current.includes(sportKey)
+    ? current.filter((key) => key !== sportKey)
+    : [...current, sportKey];
+  return isAllLeaguesSelected(next, allLeagues) ? [...allLeagues] : next;
+}
+
+export function toggleAllLeagues(leagues: string[], allLeagues: string[]): string[] {
+  return isAllLeaguesSelected(leagues, allLeagues) ? [] : [...allLeagues];
+}
+
 function matchesLeague(game: DigestView["games"][number], leagues: string[], allLeagues: string[]): boolean {
-  if (leagues.length === 0 || leagues.length === allLeagues.length) {
+  if (isAllLeaguesSelected(leagues, allLeagues)) {
     return true;
+  }
+  if (leagues.length === 0) {
+    return false;
   }
   return leagues.includes(game.sportKey);
 }
@@ -258,7 +293,7 @@ export function countActiveFilters(
 ): number {
   let count = 0;
 
-  if (filters.leagues.length > 0 && filters.leagues.length < allLeagues.length) {
+  if (!isAllLeaguesSelected(filters.leagues, allLeagues)) {
     count += 1;
   }
   if (filters.probabilityMin !== DEFAULT_PROBABILITY_MIN || filters.probabilityMax !== DEFAULT_PROBABILITY_MAX) {

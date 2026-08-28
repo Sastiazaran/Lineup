@@ -6,7 +6,11 @@ import {
   defaultFilterState,
   filterDigestGames,
   gamePassesFilters,
+  isAllLeaguesSelected,
+  isSomeLeaguesSelected,
   spreadBoundsFromGames,
+  toggleAllLeagues,
+  toggleLeagueInSelection,
 } from "@/lib/insights-filters";
 
 const now = new Date("2026-08-26T12:00:00.000Z");
@@ -96,6 +100,37 @@ function sampleDigest(): DigestView {
   };
 }
 
+describe("league selection helpers", () => {
+  const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+
+  it("toggles all leagues on and off", () => {
+    const allSelected = [...allLeagues];
+    expect(toggleAllLeagues(allSelected, allLeagues)).toEqual([]);
+    expect(toggleAllLeagues([], allLeagues)).toEqual(allLeagues);
+  });
+
+  it("reports all, some, and none selected states", () => {
+    expect(isAllLeaguesSelected(allLeagues, allLeagues)).toBe(true);
+    expect(isSomeLeaguesSelected(["americanfootball_nfl"], allLeagues)).toBe(true);
+    expect(isAllLeaguesSelected([], allLeagues)).toBe(false);
+    expect(isSomeLeaguesSelected([], allLeagues)).toBe(false);
+  });
+
+  it("toggles a single league from a full selection", () => {
+    const next = toggleLeagueInSelection("americanfootball_nfl", allLeagues, allLeagues);
+    expect(next).toEqual(["soccer_mexico_ligamx"]);
+  });
+
+  it("filters out all games when no leagues are selected", () => {
+    const digest = sampleDigest();
+    const filters = defaultFilterState(allLeagues);
+    filters.leagues = [];
+
+    const games = filterDigestGames(digest.games, filters, allLeagues);
+    expect(games).toHaveLength(0);
+  });
+});
+
 describe("spreadBoundsFromGames", () => {
   it("derives min and max spread from game data", () => {
     const bounds = spreadBoundsFromGames(sampleDigest().games);
@@ -117,32 +152,35 @@ describe("filterDigestGames", () => {
 
   it("filters by win probability range", () => {
     const digest = sampleDigest();
-    const filters = defaultFilterState();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    const filters = defaultFilterState(allLeagues);
     filters.probabilityMin = 50;
     filters.probabilityMax = 60;
 
-    const games = filterDigestGames(digest.games, filters, ["soccer_mexico_ligamx", "americanfootball_nfl"]);
+    const games = filterDigestGames(digest.games, filters, allLeagues);
     expect(games.some((game) => game.homeTeam === "Club America")).toBe(true);
     expect(games.some((game) => game.homeTeam === "Pumas UNAM")).toBe(false);
   });
 
   it("filters by spread range", () => {
     const digest = sampleDigest();
-    const filters = defaultFilterState();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    const filters = defaultFilterState(allLeagues);
     filters.spreadMin = -1;
     filters.spreadMax = 0;
 
-    const games = filterDigestGames(digest.games, filters, ["soccer_mexico_ligamx", "americanfootball_nfl"]);
+    const games = filterDigestGames(digest.games, filters, allLeagues);
     expect(games.some((game) => game.homeTeam === "Pumas UNAM")).toBe(true);
     expect(games.some((game) => game.homeTeam === "Club America")).toBe(false);
   });
 
   it("filters by today preset", () => {
     const digest = sampleDigest();
-    const filters = defaultFilterState();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    const filters = defaultFilterState(allLeagues);
     filters.datePreset = "today";
 
-    const games = filterDigestGames(digest.games, filters, ["soccer_mexico_ligamx", "americanfootball_nfl"], now);
+    const games = filterDigestGames(digest.games, filters, allLeagues, now);
     expect(games).toHaveLength(2);
     expect(games.every((game) => game.sportKey === "soccer_mexico_ligamx")).toBe(true);
     expect(games.some((game) => game.homeTeam === "Chiefs")).toBe(false);
@@ -152,7 +190,8 @@ describe("filterDigestGames", () => {
 describe("applyInsightsFilters", () => {
   it("hides recommendation when it falls outside probability range", () => {
     const digest = sampleDigest();
-    const filters = defaultFilterState();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    const filters = defaultFilterState(allLeagues);
     filters.probabilityMin = 70;
     filters.probabilityMax = 100;
 
@@ -162,7 +201,8 @@ describe("applyInsightsFilters", () => {
 
   it("hides parlay when any leg is filtered out", () => {
     const digest = sampleDigest();
-    const filters = defaultFilterState();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    const filters = defaultFilterState(allLeagues);
     filters.probabilityMin = 50;
     filters.probabilityMax = 100;
 
@@ -172,7 +212,8 @@ describe("applyInsightsFilters", () => {
 
   it("keeps parlay when all legs pass filters", () => {
     const digest = sampleDigest();
-    const filters = defaultFilterState();
+    const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
+    const filters = defaultFilterState(allLeagues);
 
     const result = applyInsightsFilters(digest, filters, now);
     expect(result.parlay?.legs).toHaveLength(2);
@@ -188,6 +229,14 @@ describe("countActiveFilters", () => {
 
     const count = countActiveFilters(filters, ["a", "b"], { min: -3, max: 3 });
     expect(count).toBe(3);
+  });
+
+  it("counts deselected leagues as an active filter", () => {
+    const filters = defaultFilterState(["a", "b"]);
+    filters.leagues = [];
+
+    const count = countActiveFilters(filters, ["a", "b"], { min: -3, max: 3 });
+    expect(count).toBe(1);
   });
 });
 
@@ -206,7 +255,7 @@ describe("gamePassesFilters", () => {
         away: { name: "B", probability: 0.5, decimalOdds: 2 },
       },
     };
-    const filters = defaultFilterState();
+    const filters = defaultFilterState(["soccer_mexico_ligamx"]);
     filters.spreadMin = -1;
     filters.spreadMax = 1;
 

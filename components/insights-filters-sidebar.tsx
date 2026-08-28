@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { DigestView } from "@/components/insights-panel";
 import { RangeSlider } from "@/components/range-slider";
 import {
   countActiveFilters,
   defaultFilterState,
+  isAllLeaguesSelected,
+  isSomeLeaguesSelected,
   leaguesFromGames,
   spreadBoundsFromGames,
+  toggleAllLeagues,
+  toggleLeagueInSelection,
   type InsightsFilterState,
   writeStoredFilters,
 } from "@/lib/insights-filters";
@@ -37,24 +41,36 @@ export function InsightsFiltersSidebar({
   const spreadBounds = useMemo(() => spreadBoundsFromGames(games), [games]);
   const allLeagueKeys = useMemo(() => leagues.map((league) => league.sportKey), [leagues]);
   const activeCount = countActiveFilters(filters, allLeagueKeys, spreadBounds);
+  const allLeaguesSelected = isAllLeaguesSelected(filters.leagues, allLeagueKeys);
+  const someLeaguesSelected = isSomeLeaguesSelected(filters.leagues, allLeagueKeys);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     writeStoredFilters(filters);
   }, [filters]);
 
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someLeaguesSelected;
+    }
+  }, [someLeaguesSelected]);
+
   function toggleLeague(sportKey: string) {
-    const current = filters.leagues.length > 0 ? filters.leagues : allLeagueKeys;
-    const next = current.includes(sportKey)
-      ? current.filter((key) => key !== sportKey)
-      : [...current, sportKey];
-    onChange({ ...filters, leagues: next.length === allLeagueKeys.length ? allLeagueKeys : next });
+    onChange({
+      ...filters,
+      leagues: toggleLeagueInSelection(sportKey, filters.leagues, allLeagueKeys),
+    });
   }
 
   function isLeagueChecked(sportKey: string): boolean {
-    if (filters.leagues.length === 0 || filters.leagues.length === allLeagueKeys.length) {
+    if (isAllLeaguesSelected(filters.leagues, allLeagueKeys)) {
       return true;
     }
     return filters.leagues.includes(sportKey);
+  }
+
+  function toggleSelectAllLeagues() {
+    onChange({ ...filters, leagues: toggleAllLeagues(filters.leagues, allLeagueKeys) });
   }
 
   function resetFilters() {
@@ -112,6 +128,18 @@ export function InsightsFiltersSidebar({
             <section>
               <h3 className="mb-3 text-xs uppercase tracking-wider text-mist">League</h3>
               <ul className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+                <li>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-paper">
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      checked={allLeaguesSelected}
+                      onChange={toggleSelectAllLeagues}
+                      className="size-3.5 accent-lime"
+                    />
+                    <span>Select all</span>
+                  </label>
+                </li>
                 {leagues.map((league) => (
                   <li key={league.sportKey}>
                     <label className="flex cursor-pointer items-center gap-2 text-sm text-paper">
