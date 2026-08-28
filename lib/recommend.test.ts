@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { OddsEvent } from "@/lib/odds";
-import { buildDigest, consensusByName, impliedProbability } from "@/lib/recommend";
+import {
+  buildDigest,
+  consensusByName,
+  impliedProbability,
+  normalizeWinProbabilities,
+} from "@/lib/recommend";
 import { teamsMatch } from "@/lib/teams";
+import { roundSpread } from "@/lib/formatting";
 
 const now = new Date("2026-08-25T16:00:00.000Z");
 
@@ -31,7 +37,34 @@ describe("consensusByName", () => {
     ]);
     const america = lines.find((line) => line.name === "Club America");
     expect(america?.decimalOdds).toBeCloseTo(1.9);
-    expect(america?.point).toBeCloseTo(-1.25);
+    expect(america?.point).toBe(-1.25);
+  });
+
+  it("rounds noisy averaged spread points to three decimals", () => {
+    const lines = consensusByName([
+      { name: "Bayern Munich", price: 1.91, point: -1.0 },
+      { name: "Bayern Munich", price: 1.91, point: -1.25 },
+      { name: "Stuttgart", price: 1.91, point: 1.125 },
+    ]);
+    const bayern = lines.find((line) => line.name === "Bayern Munich");
+    expect(bayern?.point).toBe(roundSpread(-1.125));
+  });
+});
+
+describe("normalizeWinProbabilities", () => {
+  it("normalizes three-way soccer moneylines to 100%", () => {
+    const lines = consensusByName([
+      { name: "Bayern Munich", price: 1.25 },
+      { name: "Stuttgart", price: 12.0 },
+      { name: "Draw", price: 6.5 },
+    ]);
+    const probs = normalizeWinProbabilities(lines, "Bayern Munich", "Stuttgart");
+    const total =
+      (probs?.home.probability ?? 0) +
+      (probs?.away.probability ?? 0) +
+      (probs?.draw?.probability ?? 0);
+    expect(total).toBeCloseTo(1);
+    expect(probs?.home.probability).toBeGreaterThan(0.7);
   });
 });
 
@@ -110,6 +143,8 @@ describe("buildDigest", () => {
     expect(digest.recommendation?.teamName).toBe("Club America");
     expect(digest.recommendation?.spread?.point).toBe(-1.5);
     expect(digest.games).toHaveLength(2);
+    expect(digest.parlay?.legs).toHaveLength(2);
+    expect(digest.games[0]?.winProbabilities.home.probability).toBeGreaterThan(0);
   });
 
   it("ignores shorter odds on teams that are not favorited", () => {
@@ -136,5 +171,15 @@ describe("buildDigest", () => {
     );
     expect(digest.recommendation).toBeNull();
     expect(digest.games).toHaveLength(0);
+    expect(digest.parlay).toBeNull();
+  });
+
+  it("returns no parlay with fewer than two eligible legs", () => {
+    const digest = buildDigest(
+      [americaGuada],
+      [{ sportKey: "soccer_mexico_ligamx", teamName: "Club America" }],
+      now,
+    );
+    expect(digest.parlay).toBeNull();
   });
 });
