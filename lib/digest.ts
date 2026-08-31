@@ -1,11 +1,11 @@
 import { and, eq, gte, isNull } from "drizzle-orm";
 import { Resend } from "resend";
-import { EnvKey, Routes } from "@/lib/constants";
+import { EnvKey, Routes, SPORTS } from "@/lib/constants";
 import { getDb } from "@/lib/db";
 import { emailLog, favorites, users } from "@/lib/db/schema";
 import { renderDigestEmail } from "@/lib/email";
 import { getAppUrl, getEmailFrom, requireEnv } from "@/lib/env";
-import { fetchOddsForSports } from "@/lib/odds";
+import { refreshStoredOdds } from "@/lib/odds-snapshot";
 import { buildDigest, type FavoriteTeam } from "@/lib/recommend";
 import { createUnsubscribeToken } from "@/lib/session";
 
@@ -17,7 +17,9 @@ export type DigestRunResult = {
 
 /**
  * Builds and sends today's digest for every subscribed user with a playable favorite.
+ * Live odds are fetched once here (all catalog sports), persisted, then reused.
  * Skips a user when they already received mail today or have no recommended bet in the window.
+ * Falls back to the last-good snapshot when the Odds API quota is spent.
  */
 export async function runDailyDigest(now = new Date()): Promise<DigestRunResult> {
   const db = getDb();
@@ -27,8 +29,8 @@ export async function runDailyDigest(now = new Date()): Promise<DigestRunResult>
 
   const subscribers = await db.select().from(users).where(isNull(users.unsubscribedAt));
   const allFavorites = await db.select().from(favorites);
-  const sportKeys = [...new Set(allFavorites.map((row) => row.sportKey))];
-  const events = sportKeys.length > 0 ? await fetchOddsForSports(sportKeys) : [];
+  const catalogKeys = SPORTS.map((sport) => sport.key);
+  const { events } = await refreshStoredOdds(catalogKeys);
 
   const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 

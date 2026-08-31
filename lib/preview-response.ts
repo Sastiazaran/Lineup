@@ -1,5 +1,5 @@
-import { SPORTS } from "@/lib/constants";
-import { fetchOddsForSports } from "@/lib/odds";
+import { OddsMessage, SPORTS } from "@/lib/constants";
+import { isOddsQuotaExhausted, listOddsSnapshots } from "@/lib/odds-snapshot";
 import { buildDigest, type FavoriteTeam } from "@/lib/recommend";
 import { TEAM_ROSTERS, mergeTeamList } from "@/lib/teams";
 
@@ -9,16 +9,24 @@ export type PreviewPayload = {
   teams: Record<string, string[]>;
 };
 
+/**
+ * Builds the dashboard payload from the daily odds snapshot. Does not call The Odds API.
+ * @param userFavorites Saved or guest team picks
+ */
 export async function buildPreviewResponse(userFavorites: FavoriteTeam[]): Promise<PreviewPayload> {
-  const sportKeys = [...new Set(userFavorites.map((item) => item.sportKey))];
-  let events: Awaited<ReturnType<typeof fetchOddsForSports>> = [];
+  const catalogKeys = SPORTS.map((sport) => sport.key);
+  let events: Awaited<ReturnType<typeof listOddsSnapshots>>[number]["events"] = [];
   let oddsError: string | undefined;
   try {
-    if (sportKeys.length > 0) {
-      events = await fetchOddsForSports(sportKeys);
+    const rows = await listOddsSnapshots(catalogKeys);
+    events = rows.flatMap((row) => row.events);
+    if (await isOddsQuotaExhausted()) {
+      oddsError = OddsMessage.QuotaPaused;
+    } else if (events.length === 0) {
+      oddsError = OddsMessage.SnapshotEmpty;
     }
   } catch (error) {
-    oddsError = error instanceof Error ? error.message : "Odds unavailable";
+    oddsError = error instanceof Error ? error.message : OddsMessage.SnapshotEmpty;
   }
 
   const digest = buildDigest(events, userFavorites);

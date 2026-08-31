@@ -156,12 +156,21 @@ export function InsightsPanel({ digest, message, isGuest, selectedCount }: Insig
       <section className="flex flex-col gap-8">
         {message ? <p className="text-sm text-lime">{message}</p> : null}
         {!hasSourceGames ? (
-          <p className="max-w-xl text-mist">
-            {selectedCount === 0
-              ? "Pick teams in Team Selection to see upcoming games, win bars, and parlay ideas."
-              : "No favorite-team games in the next 48 hours. Check back when the slate fills in."}
-            {isGuest ? " Daily email is not available in guest mode." : null}
-          </p>
+          selectedCount === 0 ? (
+            <p className="max-w-xl text-mist">
+              Pick teams in Team Selection to see upcoming games, win bars, and parlay ideas.
+              {isGuest ? " Daily email is not available in guest mode." : null}
+            </p>
+          ) : message ? (
+            isGuest ? (
+              <p className="max-w-xl text-mist">Daily email is not available in guest mode.</p>
+            ) : null
+          ) : (
+            <p className="max-w-xl text-mist">
+              No favorite-team games in the next 48 hours. Check back when the slate fills in.
+              {isGuest ? " Daily email is not available in guest mode." : null}
+            </p>
+          )
         ) : !hasFilteredGames ? (
           <p className="max-w-xl text-mist">
             No games match your filters. Try widening the probability or spread range, or reset filters.

@@ -13,6 +13,7 @@ function isAuthorized(request: Request): boolean {
 
 /**
  * Vercel Cron entrypoint. Requires `Authorization: Bearer CRON_SECRET`.
+ * This is the only scheduled Odds API refresh; results are stored for preview.
  */
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {

@@ -1,4 +1,4 @@
-import { pgTable, timestamp, uuid, varchar, uniqueIndex } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, timestamp, uuid, varchar, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -40,4 +40,24 @@ export const emailLog = pgTable("email_log", {
   sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
   pickTeam: varchar("pick_team", { length: 120 }),
   eventId: varchar("event_id", { length: 80 }),
+});
+
+/**
+ * Last successful Odds API payload per sport. Preview reads this; cron writes it.
+ */
+export const oddsSnapshots = pgTable("odds_snapshots", {
+  sportKey: varchar("sport_key", { length: 80 }).primaryKey(),
+  events: jsonb("events").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+});
+
+/** Singleton row (`global`) tracking Odds API remaining credits and quota circuit. */
+export const oddsQuotaState = pgTable("odds_quota_state", {
+  id: varchar("id", { length: 32 }).primaryKey(),
+  requestsRemaining: integer("requests_remaining"),
+  requestsUsed: integer("requests_used"),
+  lastCost: integer("last_cost"),
+  exhaustedAt: timestamp("exhausted_at", { withTimezone: true }),
+  lastLiveFetchAt: timestamp("last_live_fetch_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });

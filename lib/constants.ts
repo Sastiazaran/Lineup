@@ -43,10 +43,33 @@ export const EnvKey = {
 
 export const OddsApi = {
   BaseUrl: "https://api.the-odds-api.com/v4",
-  Regions: "us,eu",
+  RegionUs: "us",
+  RegionEu: "eu",
   Markets: "h2h,spreads",
   OddsFormat: "decimal",
-  RevalidateSeconds: 900,
+} as const;
+
+export const OddsApiErrorCode = {
+  OutOfUsageCredits: "OUT_OF_USAGE_CREDITS",
+} as const;
+
+export const OddsApiHeader = {
+  Remaining: "x-requests-remaining",
+  Used: "x-requests-used",
+  Last: "x-requests-last",
+} as const;
+
+export const OddsQuotaStateId = {
+  Global: "global",
+} as const;
+
+export const SportGroupPrefix = {
+  Soccer: "soccer_",
+} as const;
+
+export const OddsMessage = {
+  SnapshotEmpty: "Odds will appear after the next daily refresh.",
+  QuotaPaused: "The Odds API quota is used up until it resets. Insights will use the last saved lines.",
 } as const;
 
 export const MarketKey = {

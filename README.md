@@ -4,6 +4,8 @@ Daily sports-odds email for the teams you actually bet. Pick favorites on the we
 
 The 2021 Codere scraper in `legacy/` is retired.
 
+Odds are fetched **once per day** by the digest cron, saved in Postgres, and reused by the dashboard. Preview never calls The Odds API. On `OUT_OF_USAGE_CREDITS`, later sports use the last-good snapshot. A second cron run the same UTC day skips live calls. The next day probes one sport to see if the quota reset; if it is still spent, the rest of that run stays on the snapshot. Soccer uses the `eu` region and US leagues use `us`, so each call costs 2 credits (`h2h` + `spreads`). Empty (off-season) responses are free.
+
 ## Stack
 
 - Next.js on Vercel
@@ -14,7 +16,7 @@ The 2021 Codere scraper in `legacy/` is retired.
 ## Setup
 
 1. Copy `.env.example` to `.env.local` and fill in the keys.
-2. Create a Neon database and run `npm run db:push` (or apply `drizzle/0000_init.sql`).
+2. Create a Neon database and run `npm run db:push` (or apply `drizzle/0000_init.sql` and `drizzle/0001_odds_snapshots.sql`).
 3. Create an Odds API key (free tier is enough to start).
 4. Create a Resend API key. Verify a domain, or use `beth.t@example.com` in development.
 5. Set `SESSION_SECRET` to a long random string and `CRON_SECRET` to another.
@@ -24,7 +26,7 @@ Without `RESEND_API_KEY` in development, the magic-link URL is printed in the se
 
 ## Digest rule
 
-Email goes out daily (Vercel Cron at 14:00 UTC) only when a favorite team has a game in the next 48 hours. The recommended bet is the favorited team with the shortest consensus moneyline (highest implied probability). Consensus is the average of returned bookmakers. That team’s consensus spread is included when the API returns one.
+Email goes out daily (Vercel Cron at 14:00 UTC) only when a favorite team has a game in the next 48 hours. That cron is also the only Odds API refresh: it stores lines for every catalog league, then the web preview reads that snapshot. The recommended bet is the favorited team with the shortest consensus moneyline (highest implied probability). Consensus is the average of returned bookmakers. That team’s consensus spread is included when the API returns one.
 
 ## Deploy on Vercel
 
@@ -43,6 +45,6 @@ The original `CasinoTracker.py` committed a Gmail app password. **Revoke that pa
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Local Next.js |
-| `npm test` | Recommendation unit tests |
+| `npm test` | Unit tests (recommendations, odds refresh, preview snapshot) |
 | `npm run build` | Production build |
 | `npm run db:push` | Push Drizzle schema to Neon |
