@@ -19,4 +19,10 @@ describe("cleanFavorites", () => {
   it("returns empty array for missing input", () => {
     expect(cleanFavorites(undefined)).toEqual([]);
   });
+
+  it("keeps NFL favorites", () => {
+    expect(
+      cleanFavorites([{ sportKey: SportKey.Nfl, teamName: "Kansas City Chiefs" }]),
+    ).toEqual([{ sportKey: SportKey.Nfl, teamName: "Kansas City Chiefs" }]);
+  });
 });

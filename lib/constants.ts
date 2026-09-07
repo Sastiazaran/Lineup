@@ -86,6 +86,7 @@ export const TimeWindow = {
 export const SportKey = {
   Mlb: "baseball_mlb",
   Nba: "basketball_nba",
+  Nfl: "americanfootball_nfl",
   Epl: "soccer_epl",
   LaLiga: "soccer_spain_la_liga",
   LigaMx: "soccer_mexico_ligamx",
@@ -101,6 +102,7 @@ export type SportKey = (typeof SportKey)[keyof typeof SportKey];
 export const SPORTS = [
   { key: SportKey.Mlb, label: "MLB", group: "Baseball" },
   { key: SportKey.Nba, label: "NBA", group: "Basketball" },
+  { key: SportKey.Nfl, label: "NFL", group: "Football" },
   { key: SportKey.Epl, label: "Premier League", group: "Soccer" },
   { key: SportKey.LaLiga, label: "La Liga", group: "Soccer" },
   { key: SportKey.Bundesliga, label: "Bundesliga", group: "Soccer" },

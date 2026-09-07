@@ -15,6 +15,7 @@ describe("regionsForSport", () => {
     expect(regionsForSport("soccer_epl")).toBe("eu");
     expect(regionsForSport("baseball_mlb")).toBe("us");
     expect(regionsForSport("basketball_nba")).toBe("us");
+    expect(regionsForSport("americanfootball_nfl")).toBe("us");
   });
 });
 
