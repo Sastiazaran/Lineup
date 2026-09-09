@@ -1,10 +1,12 @@
 # Lineup
 
-Daily sports-odds email for the teams you actually bet. Pick favorites on the web; get moneylines, spreads, and one recommended bet in your inbox.
+Daily sports-odds email for the teams you actually bet. Pick favorites on the web; get moneylines, spreads, and one recommended bet in your inbox. **Tino** is the winner-pick tracker: tap who you think wins (Champions, NBA, NFL, Liga MX, and the other catalog leagues), then see hit rate overall and per league.
 
 The 2021 Codere scraper in `legacy/` is retired.
 
 Odds are fetched **once per day** by the digest cron, saved in Postgres, and reused by the dashboard. Preview never calls The Odds API. On `OUT_OF_USAGE_CREDITS`, later sports use the last-good snapshot. A second cron run the same UTC day skips live calls. The next day probes one sport to see if the quota reset; if it is still spent, the rest of that run stays on the snapshot. Soccer uses the `eu` region and US leagues use `us`, so each call costs 2 credits (`h2h` + `spreads`). Empty (off-season) responses are free.
+
+Tino reads that same snapshot for upcoming games. Completed scores are fetched only for sports with pending picks that have already started (`/scores?daysFrom=3`, 2 credits per sport). Those scores are cached for 30 minutes so opening the tab does not spend credits every time. Soccer picks can be home, away, or draw. Picks lock at kickoff. Sign-in is required to save the record; guest mode does not.
 
 ## Stack
 
@@ -16,7 +18,7 @@ Odds are fetched **once per day** by the digest cron, saved in Postgres, and reu
 ## Setup
 
 1. Copy `.env.example` to `.env.local` and fill in the keys.
-2. Create a Neon database and run `npm run db:push` (or apply `drizzle/0000_init.sql` and `drizzle/0001_odds_snapshots.sql`).
+2. Create a Neon database and run `npm run db:push` (or apply `drizzle/0000_init.sql`, `drizzle/0001_odds_snapshots.sql`, and `drizzle/0002_picks.sql`).
 3. Create an Odds API key (free tier is enough to start).
 4. Create a Resend API key. Verify a domain, or use `beth.t@example.com` in development.
 5. Set `SESSION_SECRET` to a long random string and `CRON_SECRET` to another.
@@ -45,6 +47,6 @@ The original `CasinoTracker.py` committed a Gmail app password. **Revoke that pa
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Local Next.js |
-| `npm test` | Unit tests (recommendations, odds refresh, preview snapshot) |
+| `npm test` | Unit tests (recommendations, odds refresh, preview snapshot, Tino picks) |
 | `npm run build` | Production build |
 | `npm run db:push` | Push Drizzle schema to Neon |

@@ -19,6 +19,54 @@ export function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+/**
+ * Kickoff time in a compact US-style label, e.g. `Wed, Sep 9, 3:00 PM`.
+ */
+export function formatKickoff(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * Calendar date in a timezone, e.g. `2026-09-13`. Used to group NFL slates.
+ */
+export function gameDateKey(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * NFL-style gameday heading, e.g. `Sunday, Sep 13`.
+ */
+export function formatGameDate(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(iso));
+}
+
+/**
+ * Kickoff clock in a timezone, e.g. `1:00 PM`.
+ */
+export function formatGameClock(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 export function formatSpread(line: { point?: number; decimalOdds: number } | null): string {
   if (!line || typeof line.point !== "number") {
     return "—";

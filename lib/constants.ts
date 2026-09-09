@@ -28,6 +28,7 @@ export const Routes = {
   AuthGuest: "/api/auth/guest",
   Favorites: "/api/favorites",
   Preview: "/api/preview",
+  Picks: "/api/picks",
   CronDigest: "/api/cron/digest",
 } as const;
 
@@ -47,6 +48,8 @@ export const OddsApi = {
   RegionEu: "eu",
   Markets: "h2h,spreads",
   OddsFormat: "decimal",
+  ScoresDaysFrom: 3,
+  ScoresCredits: 2,
 } as const;
 
 export const OddsApiErrorCode = {
@@ -81,7 +84,36 @@ export const TimeWindow = {
   DigestHours: 48,
   MagicLinkMinutes: 15,
   SessionDays: 30,
+  ScoresFreshMinutes: 30,
 } as const;
+
+export const TimeZone = {
+  Nfl: "America/New_York",
+} as const;
+
+export const PickSelection = {
+  Home: "home",
+  Away: "away",
+  Draw: "draw",
+} as const;
+
+export type PickSelection = (typeof PickSelection)[keyof typeof PickSelection];
+
+export const PickResult = {
+  Pending: "pending",
+  Hit: "hit",
+  Miss: "miss",
+} as const;
+
+export type PickResult = (typeof PickResult)[keyof typeof PickResult];
+
+export const PickOutcome = {
+  Home: "home",
+  Away: "away",
+  Draw: "draw",
+} as const;
+
+export type PickOutcome = (typeof PickOutcome)[keyof typeof PickOutcome];
 
 export const SportKey = {
   Mlb: "baseball_mlb",
@@ -114,3 +146,17 @@ export const SPORTS = [
 ] as const;
 
 export type SportDefinition = (typeof SPORTS)[number];
+
+/**
+ * Catalog row for a sport key, or undefined when the key is not in Lineup.
+ */
+export function sportDefinition(sportKey: string): SportDefinition | undefined {
+  return SPORTS.find((sport) => sport.key === sportKey);
+}
+
+/**
+ * Soccer (1X2) can be picked as home, away, or draw.
+ */
+export function sportAllowsDraw(sportKey: string): boolean {
+  return sportKey.startsWith(SportGroupPrefix.Soccer);
+}

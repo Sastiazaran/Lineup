@@ -42,6 +42,14 @@ export async function listOddsSnapshots(sportKeys: string[]): Promise<OddsSnapsh
 }
 
 /**
+ * Remaining Odds API credits from the last recorded usage row, or null if unknown.
+ */
+export async function getOddsQuotaRemaining(): Promise<number | null> {
+  const row = await loadQuotaRow();
+  return row?.requestsRemaining ?? null;
+}
+
+/**
  * Whether the last live refresh recorded a spent monthly quota.
  */
 export async function isOddsQuotaExhausted(): Promise<boolean> {
@@ -111,6 +119,14 @@ async function upsertSnapshot(sportKey: string, events: OddsEvent[]): Promise<vo
       target: oddsSnapshots.sportKey,
       set: { events, fetchedAt },
     });
+}
+
+/**
+ * Updates remaining/used credits without touching the daily `/odds` fetch timestamp.
+ * Used by Tino score refreshes so they do not block or reset the digest refresh window.
+ */
+export async function recordQuotaUsage(usage: OddsUsage, quotaExhausted: boolean): Promise<void> {
+  await upsertQuota(usage, quotaExhausted, null);
 }
 
 async function upsertQuota(
