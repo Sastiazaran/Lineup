@@ -1,4 +1,6 @@
 import {
+  NflSeason,
+  NflWeekLabel,
   OddsApi,
   PickOutcome,
   PickResult,
@@ -10,7 +12,7 @@ import {
   sportAllowsDraw,
   sportDefinition,
 } from "@/lib/constants";
-import { formatGameDate, gameDateKey } from "@/lib/formatting";
+import { gameDateKey } from "@/lib/formatting";
 import { teamsMatch } from "@/lib/teams";
 
 export type TinoPick = {
@@ -73,8 +75,8 @@ export type LeagueRecord = {
   percent: number | null;
 };
 
-export type DateGroup<T> = {
-  dateKey: string;
+export type NflWeekGroup<T> = {
+  week: number;
   label: string;
   items: T[];
 };
@@ -272,35 +274,91 @@ export function isWithinScoresWindow(commenceTime: Date, now: Date): boolean {
 }
 
 /**
- * NFL slates are Thursday / Sunday / Monday in Eastern Time. True when every
- * item is an NFL game so the board can group by that gameday.
+ * True when every item is NFL so the board can group by regular-season week.
  */
-export function shouldGroupNflByDate(items: Array<{ sportKey: string }>): boolean {
+export function shouldGroupNflByWeek(items: Array<{ sportKey: string }>): boolean {
   return items.length > 0 && items.every((item) => item.sportKey === SportKey.Nfl);
 }
 
 /**
- * Groups games by calendar date in `timeZone`, keeping kickoff order inside each day.
+ * NFL week number from kickoff. Week 1 starts on `NflSeason.Week1Date` (Eastern).
+ * Later weeks start each following Thursday-aligned 7-day block.
  */
-export function groupByGameDate<T extends { commenceTime: string }>(
-  items: T[],
-  timeZone = TimeZone.Nfl,
-): DateGroup<T>[] {
-  const groups = new Map<string, DateGroup<T>>();
+export function nflWeekNumber(iso: string): number {
+  const gameDay = gameDateKey(iso, TimeZone.Nfl);
+  const days = calendarDaysBetween(NflSeason.Week1Date, gameDay);
+  return Math.floor(days / 7) + 1;
+}
+
+/**
+ * `Week 1` through `Week 18`, or Preseason / Playoffs outside the regular season.
+ */
+export function nflWeekLabel(week: number): string {
+  if (week < 1) {
+    return NflWeekLabel.Preseason;
+  }
+  if (week > NflSeason.RegularWeeks) {
+    return NflWeekLabel.Playoffs;
+  }
+  return `${NflWeekLabel.Prefix} ${week}`;
+}
+
+/**
+ * Regular-season week numbers (1–18) for the NFL dropdown.
+ */
+export function nflRegularWeekNumbers(): number[] {
+  return Array.from({ length: NflSeason.RegularWeeks }, (_, index) => index + 1);
+}
+
+/**
+ * Current NFL week, clamped to the regular season so the dropdown has a valid default.
+ */
+export function currentNflWeek(now = new Date()): number {
+  const week = nflWeekNumber(now.toISOString());
+  if (week < 1) {
+    return 1;
+  }
+  if (week > NflSeason.RegularWeeks) {
+    return NflSeason.RegularWeeks;
+  }
+  return week;
+}
+
+/**
+ * Keeps items whose kickoff falls in the selected NFL week.
+ */
+export function filterByNflWeek<T extends { commenceTime: string }>(items: T[], week: number): T[] {
+  return items.filter((item) => nflWeekNumber(item.commenceTime) === week);
+}
+
+/**
+ * Groups NFL games as Week 1, Week 2, … in kickoff order.
+ */
+export function groupByNflWeek<T extends { commenceTime: string }>(items: T[]): NflWeekGroup<T>[] {
+  const groups = new Map<number, NflWeekGroup<T>>();
   for (const item of items) {
-    const dateKey = gameDateKey(item.commenceTime, timeZone);
-    const existing = groups.get(dateKey);
+    const week = nflWeekNumber(item.commenceTime);
+    const existing = groups.get(week);
     if (existing) {
       existing.items.push(item);
       continue;
     }
-    groups.set(dateKey, {
-      dateKey,
-      label: formatGameDate(item.commenceTime, timeZone),
+    groups.set(week, {
+      week,
+      label: nflWeekLabel(week),
       items: [item],
     });
   }
-  return [...groups.values()];
+  return [...groups.values()].sort((a, b) => a.week - b.week);
+}
+
+function calendarDaysBetween(fromYmd: string, toYmd: string): number {
+  return Math.round((utcDateMs(toYmd) - utcDateMs(fromYmd)) / (24 * 60 * 60 * 1000));
+}
+
+function utcDateMs(ymd: string): number {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return Date.UTC(year, (month ?? 1) - 1, day ?? 1);
 }
 
 function toLeagueRecord(

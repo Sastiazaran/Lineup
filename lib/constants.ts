@@ -91,6 +91,18 @@ export const TimeZone = {
   Nfl: "America/New_York",
 } as const;
 
+/** 2026 regular season: Week 1 is Wed Sep 9–Mon Sep 14 ET, then Thursday-start weeks. */
+export const NflSeason = {
+  Week1Date: "2026-09-09",
+  RegularWeeks: 18,
+} as const;
+
+export const NflWeekLabel = {
+  Preseason: "Preseason",
+  Playoffs: "Playoffs",
+  Prefix: "Week",
+} as const;
+
 export const PickSelection = {
   Home: "home",
   Away: "away",

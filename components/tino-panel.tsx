@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PickResult, PickSelection, Routes, SPORTS, TimeZone } from "@/lib/constants";
-import { formatGameClock, formatKickoff, formatPercent } from "@/lib/formatting";
+import { PickResult, PickSelection, Routes, SPORTS, SportKey } from "@/lib/constants";
+import { formatKickoff, formatNflKickoff, formatPercent } from "@/lib/formatting";
 import {
-  groupByGameDate,
+  currentNflWeek,
+  filterByNflWeek,
+  nflRegularWeekNumbers,
+  nflWeekLabel,
   selectionLabel,
-  shouldGroupNflByDate,
   type LeagueRecord,
   type TinoGame,
   type TinoPick,
@@ -30,6 +32,7 @@ type TinoPanelProps = {
 export function TinoPanel({ isGuest }: TinoPanelProps) {
   const [board, setBoard] = useState<TinoBoard>();
   const [league, setLeague] = useState(ALL_LEAGUES);
+  const [nflWeek, setNflWeek] = useState(currentNflWeek);
   const [savingId, setSavingId] = useState<string>();
   const [error, setError] = useState("");
 
@@ -70,6 +73,10 @@ export function TinoPanel({ isGuest }: TinoPanelProps) {
     () => filterByLeague(board?.settled ?? [], league),
     [board?.settled, league],
   );
+  const isNfl = league === SportKey.Nfl;
+  const visibleGames = isNfl ? filterByNflWeek(games, nflWeek) : games;
+  const visiblePending = isNfl ? filterByNflWeek(pending, nflWeek) : pending;
+  const visibleSettled = isNfl ? filterByNflWeek(settled, nflWeek) : settled;
 
   async function pickWinner(eventId: string, selection: string) {
     setSavingId(eventId);
@@ -140,35 +147,40 @@ export function TinoPanel({ isGuest }: TinoPanelProps) {
       </div>
 
       <div>
-        <h2 className="font-display text-2xl tracking-wide text-lime">Upcoming</h2>
-        {games.length === 0 ? (
-          <p className="mt-3 text-mist">No upcoming games in this league yet.</p>
-        ) : shouldGroupNflByDate(games) ? (
-          <div className="mt-4 flex flex-col gap-8">
-            {groupByGameDate(games).map((group) => (
-              <div key={group.dateKey}>
-                <h3 className="font-display text-xl tracking-wide text-paper">{group.label}</h3>
-                <ul className="mt-3 flex flex-col gap-6">
-                  {group.items.map((game) => (
-                    <UpcomingGame
-                      key={game.eventId}
-                      game={game}
-                      timeLabel={formatGameClock(game.commenceTime, TimeZone.Nfl)}
-                      savingId={savingId}
-                      onPick={pickWinner}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="font-display text-2xl tracking-wide text-lime">Upcoming</h2>
+          {isNfl ? (
+            <label className="flex flex-col gap-1 text-sm uppercase tracking-[0.18em] text-mist">
+              Week
+              <select
+                value={nflWeek}
+                onChange={(event) => setNflWeek(Number(event.target.value))}
+                className="border border-lime bg-transparent px-3 py-2 font-display text-xl tracking-wide text-lime outline-none"
+              >
+                {nflRegularWeekNumbers().map((week) => (
+                  <option key={week} value={week} className="bg-field-deep text-paper">
+                    {nflWeekLabel(week)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+        {visibleGames.length === 0 ? (
+          <p className="mt-3 text-mist">
+            {isNfl ? "No upcoming games in this week yet." : "No upcoming games in this league yet."}
+          </p>
         ) : (
           <ul className="mt-4 flex flex-col gap-6">
-            {games.map((game) => (
+            {visibleGames.map((game) => (
               <UpcomingGame
                 key={game.eventId}
                 game={game}
-                timeLabel={`${game.sportTitle} · ${formatKickoff(game.commenceTime)}`}
+                timeLabel={
+                  isNfl
+                    ? formatNflKickoff(game.commenceTime)
+                    : `${game.sportTitle} · ${formatKickoff(game.commenceTime)}`
+                }
                 savingId={savingId}
                 onPick={pickWinner}
               />
@@ -177,55 +189,25 @@ export function TinoPanel({ isGuest }: TinoPanelProps) {
         )}
       </div>
 
-      {pending.length > 0 ? (
+      {visiblePending.length > 0 ? (
         <div>
           <h2 className="font-display text-2xl tracking-wide text-lime">Awaiting result</h2>
-          {shouldGroupNflByDate(pending) ? (
-            <div className="mt-4 flex flex-col gap-6">
-              {groupByGameDate(pending).map((group) => (
-                <div key={group.dateKey}>
-                  <h3 className="font-display text-lg tracking-wide text-paper">{group.label}</h3>
-                  <ul className="mt-2 flex flex-col gap-3">
-                    {group.items.map((pick) => (
-                      <PendingPick key={pick.eventId} pick={pick} />
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ul className="mt-4 flex flex-col gap-3">
-              {pending.map((pick) => (
-                <PendingPick key={pick.eventId} pick={pick} />
-              ))}
-            </ul>
-          )}
+          <ul className="mt-4 flex flex-col gap-3">
+            {visiblePending.map((pick) => (
+              <PendingPick key={pick.eventId} pick={pick} />
+            ))}
+          </ul>
         </div>
       ) : null}
 
-      {settled.length > 0 ? (
+      {visibleSettled.length > 0 ? (
         <div>
           <h2 className="font-display text-2xl tracking-wide text-lime">Results</h2>
-          {shouldGroupNflByDate(settled) ? (
-            <div className="mt-4 flex flex-col gap-6">
-              {groupByGameDate(settled).map((group) => (
-                <div key={group.dateKey}>
-                  <h3 className="font-display text-lg tracking-wide text-paper">{group.label}</h3>
-                  <ul className="mt-2 flex flex-col gap-3">
-                    {group.items.map((pick) => (
-                      <SettledPick key={pick.eventId} pick={pick} />
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ul className="mt-4 flex flex-col gap-3">
-              {settled.map((pick) => (
-                <SettledPick key={pick.eventId} pick={pick} />
-              ))}
-            </ul>
-          )}
+          <ul className="mt-4 flex flex-col gap-3">
+            {visibleSettled.map((pick) => (
+              <SettledPick key={pick.eventId} pick={pick} />
+            ))}
+          </ul>
         </div>
       ) : null}
     </section>

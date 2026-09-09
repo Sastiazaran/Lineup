@@ -5,16 +5,20 @@ import {
   buildTinoGames,
   buildTinoRecord,
   canChangePick,
-  groupByGameDate,
+  currentNflWeek,
+  filterByNflWeek,
+  groupByNflWeek,
   isScoresSnapshotFresh,
   isValidSelection,
   isWithinScoresWindow,
+  nflWeekLabel,
+  nflWeekNumber,
   outcomeFromScores,
   parseTeamScore,
   resultForPick,
   selectionLabel,
   settlementFromScore,
-  shouldGroupNflByDate,
+  shouldGroupNflByWeek,
 } from "@/lib/picks";
 
 const kickoff = "2026-09-10T19:00:00.000Z";
@@ -270,31 +274,57 @@ describe("isWithinScoresWindow", () => {
   });
 });
 
-describe("shouldGroupNflByDate", () => {
+describe("shouldGroupNflByWeek", () => {
   it("groups only when every game is NFL", () => {
-    expect(shouldGroupNflByDate([{ sportKey: SportKey.Nfl }, { sportKey: SportKey.Nfl }])).toBe(true);
-    expect(shouldGroupNflByDate([{ sportKey: SportKey.Nfl }, { sportKey: SportKey.Nba }])).toBe(false);
-    expect(shouldGroupNflByDate([])).toBe(false);
+    expect(shouldGroupNflByWeek([{ sportKey: SportKey.Nfl }, { sportKey: SportKey.Nfl }])).toBe(true);
+    expect(shouldGroupNflByWeek([{ sportKey: SportKey.Nfl }, { sportKey: SportKey.Nba }])).toBe(false);
+    expect(shouldGroupNflByWeek([])).toBe(false);
   });
 });
 
-describe("groupByGameDate", () => {
-  it("splits NFL kickoffs onto Thursday, Sunday, and Monday Eastern dates", () => {
-    const groups = groupByGameDate([
-      { id: "tnf", commenceTime: "2026-09-11T00:15:00.000Z" },
-      { id: "sun-early", commenceTime: "2026-09-13T17:00:00.000Z" },
-      { id: "sun-late", commenceTime: "2026-09-13T20:05:00.000Z" },
-      { id: "mnf", commenceTime: "2026-09-15T00:15:00.000Z" },
+describe("nflWeekNumber", () => {
+  it("maps 2026 kickoffs onto Week 1 and Week 2", () => {
+    expect(nflWeekNumber("2026-09-10T00:20:00.000Z")).toBe(1);
+    expect(nflWeekNumber("2026-09-11T00:35:00.000Z")).toBe(1);
+    expect(nflWeekNumber("2026-09-13T17:00:00.000Z")).toBe(1);
+    expect(nflWeekNumber("2026-09-15T00:15:00.000Z")).toBe(1);
+    expect(nflWeekNumber("2026-09-18T00:15:00.000Z")).toBe(2);
+  });
+});
+
+describe("groupByNflWeek", () => {
+  it("splits a mixed slate into Week 1 and Week 2 headings", () => {
+    const groups = groupByNflWeek([
+      { id: "kickoff", commenceTime: "2026-09-10T00:20:00.000Z" },
+      { id: "sun", commenceTime: "2026-09-13T17:00:00.000Z" },
+      { id: "week2", commenceTime: "2026-09-18T00:15:00.000Z" },
     ]);
-    expect(groups.map((group) => ({ key: group.dateKey, ids: group.items.map((item) => item.id) }))).toEqual(
-      [
-        { key: "2026-09-10", ids: ["tnf"] },
-        { key: "2026-09-13", ids: ["sun-early", "sun-late"] },
-        { key: "2026-09-14", ids: ["mnf"] },
-      ],
-    );
-    expect(groups[0]?.label).toBe("Thursday, Sep 10");
-    expect(groups[1]?.label).toBe("Sunday, Sep 13");
-    expect(groups[2]?.label).toBe("Monday, Sep 14");
+    expect(groups.map((group) => ({ week: group.week, label: group.label, ids: group.items.map((item) => item.id) }))).toEqual([
+      { week: 1, label: "Week 1", ids: ["kickoff", "sun"] },
+      { week: 2, label: "Week 2", ids: ["week2"] },
+    ]);
+    expect(nflWeekLabel(18)).toBe("Week 18");
+    expect(nflWeekLabel(19)).toBe("Playoffs");
+    expect(nflWeekLabel(0)).toBe("Preseason");
+  });
+});
+
+describe("currentNflWeek", () => {
+  it("clamps to week 1 before the season and week 18 after it", () => {
+    expect(currentNflWeek(new Date("2026-08-01T12:00:00.000Z"))).toBe(1);
+    expect(currentNflWeek(new Date("2026-09-10T00:20:00.000Z"))).toBe(1);
+    expect(currentNflWeek(new Date("2026-09-18T00:15:00.000Z"))).toBe(2);
+    expect(currentNflWeek(new Date("2027-02-01T12:00:00.000Z"))).toBe(18);
+  });
+});
+
+describe("filterByNflWeek", () => {
+  it("returns only games in the selected week", () => {
+    const slate = [
+      { id: "w1", commenceTime: "2026-09-13T17:00:00.000Z" },
+      { id: "w2", commenceTime: "2026-09-18T00:15:00.000Z" },
+    ];
+    expect(filterByNflWeek(slate, 1).map((item) => item.id)).toEqual(["w1"]);
+    expect(filterByNflWeek(slate, 2).map((item) => item.id)).toEqual(["w2"]);
   });
 });
