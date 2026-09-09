@@ -6,6 +6,7 @@ import { emailLog, favorites, users } from "@/lib/db/schema";
 import { renderDigestEmail } from "@/lib/email";
 import { getAppUrl, getEmailFrom, requireEnv } from "@/lib/env";
 import { refreshStoredOdds } from "@/lib/odds-snapshot";
+import { settleDuePicks } from "@/lib/picks-store";
 import { buildDigest, type FavoriteTeam } from "@/lib/recommend";
 import { createUnsubscribeToken } from "@/lib/session";
 
@@ -20,6 +21,8 @@ export type DigestRunResult = {
  * Live odds are fetched once here (all catalog sports), persisted, then reused.
  * Skips a user when they already received mail today or have no recommended bet in the window.
  * Falls back to the last-good snapshot when the Odds API quota is spent.
+ * Also settles due Tino picks from `/scores` when credits allow; settlement
+ * failures are swallowed so mail still goes out.
  */
 export async function runDailyDigest(now = new Date()): Promise<DigestRunResult> {
   const db = getDb();
@@ -31,6 +34,11 @@ export async function runDailyDigest(now = new Date()): Promise<DigestRunResult>
   const allFavorites = await db.select().from(favorites);
   const catalogKeys = SPORTS.map((sport) => sport.key);
   const { events } = await refreshStoredOdds(catalogKeys);
+  try {
+    await settleDuePicks(now);
+  } catch {
+    // Tino settlement must not block digest mail.
+  }
 
   const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 

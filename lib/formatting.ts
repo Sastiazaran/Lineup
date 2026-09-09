@@ -1,3 +1,5 @@
+import { TimeZone } from "@/lib/constants";
+
 /** Rounds spread/handicap lines for display (averaged bookmaker points can be noisy). */
 export function roundSpread(point: number): number {
   return Math.round(point * 1000) / 1000;
@@ -17,6 +19,45 @@ export function formatOdds(value: number): string {
 
 export function formatPercent(value: number): string {
   return `${Math.round(value * 100)}%`;
+}
+
+/**
+ * Kickoff time in a compact US-style label, e.g. `Wed, Sep 9, 3:00 PM`.
+ */
+export function formatKickoff(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * Calendar date in a timezone, e.g. `2026-09-13`. Used to map NFL kickoffs to weeks.
+ */
+export function gameDateKey(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * NFL kickoff in Eastern Time, e.g. `Thu, Sep 10, 8:15 PM`.
+ */
+export function formatNflKickoff(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: TimeZone.Nfl,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
 }
 
 export function formatSpread(line: { point?: number; decimalOdds: number } | null): string {

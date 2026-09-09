@@ -9,8 +9,16 @@ import { InsightsPanel, type DigestView } from "@/components/insights-panel";
 import { ParlayPanel } from "@/components/parlay-panel";
 import { SignOutButton } from "@/components/sign-out-button";
 import { TeamPicker } from "@/components/team-picker";
+import { TinoPanel } from "@/components/tino-panel";
 
-type Tab = "insights" | "parlay" | "teams";
+type Tab = "insights" | "tino" | "parlay" | "teams";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "insights", label: "Insights" },
+  { id: "tino", label: "Tino" },
+  { id: "parlay", label: "Parlay" },
+  { id: "teams", label: "Team Selection" },
+];
 
 type PreviewResponse = {
   error?: string;
@@ -138,40 +146,21 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
         </div>
       </header>
 
-      <nav className="mt-10 flex gap-6 border-b border-white/15" aria-label="Main">
-        <button
-          type="button"
-          onClick={() => setTab("insights")}
-          className={`border-b-2 pb-3 font-display text-xl tracking-wide transition-colors ${
-            tab === "insights"
-              ? "border-lime text-lime"
-              : "border-transparent text-mist hover:text-paper"
-          }`}
-        >
-          Insights
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("parlay")}
-          className={`border-b-2 pb-3 font-display text-xl tracking-wide transition-colors ${
-            tab === "parlay"
-              ? "border-lime text-lime"
-              : "border-transparent text-mist hover:text-paper"
-          }`}
-        >
-          Parlay
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("teams")}
-          className={`border-b-2 pb-3 font-display text-xl tracking-wide transition-colors ${
-            tab === "teams"
-              ? "border-lime text-lime"
-              : "border-transparent text-mist hover:text-paper"
-          }`}
-        >
-          Team Selection
-        </button>
+      <nav className="mt-10 flex flex-wrap gap-6 border-b border-white/15" aria-label="Main">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setTab(item.id)}
+            className={`border-b-2 pb-3 font-display text-xl tracking-wide transition-colors ${
+              tab === item.id
+                ? "border-lime text-lime"
+                : "border-transparent text-mist hover:text-paper"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
       </nav>
 
       {tab === "insights" ? (
@@ -184,6 +173,17 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
               isGuest={isGuest}
               selectedCount={selected.length}
             />
+          </div>
+        </div>
+      ) : tab === "tino" ? (
+        <div className="mt-10">
+          <h1 className="font-display text-4xl tracking-wide text-paper sm:text-5xl">Your tino</h1>
+          <p className="mt-3 max-w-2xl text-mist">
+            Tap who you think wins. Soccer includes Draw. Results settle from official scores and
+            the record is kept overall and by league.
+          </p>
+          <div className="mt-8">
+            <TinoPanel isGuest={isGuest} />
           </div>
         </div>
       ) : tab === "parlay" ? (
