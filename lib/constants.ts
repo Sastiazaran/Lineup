@@ -15,6 +15,7 @@ export const CookieName = {
 
 export const StorageKey = {
   GuestFavorites: "lineup_guest_favorites",
+  GuestSpreads: "lineup_guest_spreads",
 } as const;
 
 export const Routes = {

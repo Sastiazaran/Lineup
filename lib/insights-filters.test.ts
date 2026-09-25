@@ -263,6 +263,10 @@ describe("filterDigestGames", () => {
 
   it("filters by today preset", () => {
     const digest = sampleDigest();
+    const midday = new Date(now);
+    midday.setHours(15, 0, 0, 0);
+    digest.games[0]!.commenceTime = new Date(midday.getTime() - 60 * 60 * 1000).toISOString();
+    digest.games[1]!.commenceTime = midday.toISOString();
     const allLeagues = ["soccer_mexico_ligamx", "americanfootball_nfl"];
     const filters = defaultFilterState(allLeagues);
     filters.datePreset = "today";

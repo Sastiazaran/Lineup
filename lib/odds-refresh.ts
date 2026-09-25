@@ -27,20 +27,28 @@ export function alreadyFetchedToday(lastLiveFetchAt: Date | null, now: Date): bo
   return lastLiveFetchAt.toISOString().slice(0, 10) === now.toISOString().slice(0, 10);
 }
 
+export type CreditsPerCall = number | ((sportKey: string) => number);
+
+function creditCost(creditsPerCall: CreditsPerCall, sportKey: string): number {
+  return typeof creditsPerCall === "function" ? creditsPerCall(sportKey) : creditsPerCall;
+}
+
 /**
  * Walks sports sequentially so a quota 401 can stop further live calls.
  * The first sport is always attempted (to detect a monthly reset). Remaining sports
  * (and a failing sport) are filled from the last-good snapshot.
+ * A sport is skipped when remaining credits cannot cover that sport's own cost.
+ * Quota is marked exhausted when nothing later in the list is affordable either.
  * @param sportKeys Distinct Odds API sport keys to cover
  * @param fetchSport Live `/odds` call for one sport
  * @param loadSnapshot Last persisted events for a sport (empty if none)
- * @param creditsPerCall Cost of the next live call; used to skip when remaining is too low
+ * @param creditsPerCall Cost of the next live call, or a per-sport cost (1 for moneyline, 2 with spreads)
  */
 export async function collectSportOdds(options: {
   sportKeys: string[];
   fetchSport: (sportKey: string) => Promise<FetchedSportOdds>;
   loadSnapshot: (sportKey: string) => Promise<OddsEvent[]>;
-  creditsPerCall: number;
+  creditsPerCall: CreditsPerCall;
 }): Promise<OddsRefreshResult> {
   const unique = [...new Set(options.sportKeys)];
   const events: OddsEvent[] = [];
@@ -50,13 +58,26 @@ export async function collectSportOdds(options: {
   let quotaExhausted = false;
   let attemptedLive = false;
 
-  for (const sportKey of unique) {
-    const cannotAffordNext =
-      remaining !== null && remaining < options.creditsPerCall;
-    if (attemptedLive && (quotaExhausted || cannotAffordNext)) {
-      quotaExhausted = true;
+  for (let index = 0; index < unique.length; index += 1) {
+    const sportKey = unique[index] ?? "";
+    const cost = creditCost(options.creditsPerCall, sportKey);
+    const cannotAfford = remaining !== null && remaining < cost;
+
+    if (attemptedLive && quotaExhausted) {
       events.push(...(await options.loadSnapshot(sportKey)));
       snapshotKeys.push(sportKey);
+      continue;
+    }
+
+    if (attemptedLive && cannotAfford) {
+      events.push(...(await options.loadSnapshot(sportKey)));
+      snapshotKeys.push(sportKey);
+      const laterFits = unique
+        .slice(index + 1)
+        .some((laterKey) => remaining !== null && remaining >= creditCost(options.creditsPerCall, laterKey));
+      if (!laterFits) {
+        quotaExhausted = true;
+      }
       continue;
     }
 

@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   explainSpread,
+  displaySpreadPoint,
   formatOdds,
   formatPercent,
-  formatSpreadPoint,
   spreadUnitForSport,
 } from "@/lib/formatting";
 import {
@@ -182,8 +182,8 @@ export function InsightsPanel({ digest, message, isGuest, selectedCount }: Insig
                 <p className="text-xl text-lime">
                   Recommended bet: {filtered.recommendation.teamName} to win (ML{" "}
                   {filtered.recommendation.moneyline.decimalOdds.toFixed(2)}
-                  {filtered.recommendation.spread
-                    ? `, spread ${formatSpreadPoint(filtered.recommendation.spread.point)}`
+                  {displaySpreadPoint(filtered.recommendation.spread)
+                    ? `, spread ${displaySpreadPoint(filtered.recommendation.spread)}`
                     : ""}
                   )
                 </p>
@@ -236,16 +236,17 @@ export function InsightsPanel({ digest, message, isGuest, selectedCount }: Insig
                     <p className="mt-2 text-mist">
                       {game.lines.map((line) => `${line.name} ${line.decimalOdds.toFixed(2)}`).join(" · ")}
                     </p>
-                    {game.spreads.length ? (
+                    {game.spreads.some((line) => typeof line.point === "number") ? (
                       <div className="mt-2 text-sm text-mist">
                         {game.spreads.map((line) => {
-                          const note =
-                            typeof line.point === "number"
-                              ? explainSpread(line.name, line.point, unit)
-                              : null;
+                          const point = displaySpreadPoint(line);
+                          if (!point) {
+                            return null;
+                          }
+                          const note = explainSpread(line.name, line.point, unit);
                           return (
                             <p key={line.name}>
-                              {line.name} {formatSpreadPoint(line.point)}
+                              {line.name} {point}
                               {note ? ` — ${note}` : ""}
                             </p>
                           );

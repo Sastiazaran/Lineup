@@ -5,6 +5,8 @@ import { Routes, SPORTS } from "@/lib/constants";
 import { getDb } from "@/lib/db";
 import { favorites } from "@/lib/db/schema";
 import { cleanFavorites } from "@/lib/favorites";
+import { cleanSpreadPrefs } from "@/lib/spread-prefs";
+import { listUserSpreadPrefs, replaceUserSpreadPrefs } from "@/lib/spread-prefs-store";
 
 const allowedSports = new Set<string>(SPORTS.map((sport) => sport.key));
 
@@ -19,6 +21,7 @@ export async function GET() {
     .where(eq(favorites.userId, session.userId));
   return NextResponse.json({
     favorites: rows.map((row) => ({ sportKey: row.sportKey, teamName: row.teamName })),
+    spreadsEnabled: await listUserSpreadPrefs(session.userId),
   });
 }
 
@@ -33,6 +36,7 @@ export async function PUT(request: Request) {
 
   const body = (await request.json()) as {
     favorites?: { sportKey?: string; teamName?: string }[];
+    spreadsEnabled?: Record<string, boolean | undefined>;
   };
   const unique = cleanFavorites(body.favorites).filter((item) => allowedSports.has(item.sportKey));
 
@@ -46,6 +50,10 @@ export async function PUT(request: Request) {
         teamName: item.teamName,
       })),
     );
+  }
+
+  if (body.spreadsEnabled && typeof body.spreadsEnabled === "object" && !Array.isArray(body.spreadsEnabled)) {
+    await replaceUserSpreadPrefs(session.userId, cleanSpreadPrefs(body.spreadsEnabled));
   }
 
   return NextResponse.json({ ok: true, count: unique.length, next: Routes.Home });

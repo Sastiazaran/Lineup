@@ -1,5 +1,6 @@
 import { StorageKey } from "@/lib/constants";
 import { cleanFavorites, type Favorite } from "@/lib/favorites";
+import { cleanSpreadPrefs, type SpreadPrefs } from "@/lib/spread-prefs";
 
 export function readGuestFavorites(): Favorite[] {
   if (typeof window === "undefined") {
@@ -29,4 +30,34 @@ export function clearGuestFavorites(): void {
     return;
   }
   window.localStorage.removeItem(StorageKey.GuestFavorites);
+}
+
+export function readGuestSpreads(): SpreadPrefs {
+  if (typeof window === "undefined") {
+    return cleanSpreadPrefs(undefined);
+  }
+  try {
+    const raw = window.localStorage.getItem(StorageKey.GuestSpreads);
+    if (!raw) {
+      return cleanSpreadPrefs(undefined);
+    }
+    const parsed = JSON.parse(raw) as Record<string, boolean | undefined>;
+    return cleanSpreadPrefs(parsed && typeof parsed === "object" ? parsed : undefined);
+  } catch {
+    return cleanSpreadPrefs(undefined);
+  }
+}
+
+export function writeGuestSpreads(prefs: SpreadPrefs): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(StorageKey.GuestSpreads, JSON.stringify(cleanSpreadPrefs(prefs)));
+}
+
+export function clearGuestSpreads(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.removeItem(StorageKey.GuestSpreads);
 }
