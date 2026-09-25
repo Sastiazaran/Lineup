@@ -3,11 +3,14 @@
 import { useMemo } from "react";
 import { SPORTS, type SportKey } from "@/lib/constants";
 import type { Favorite } from "@/lib/favorites";
+import type { SpreadPrefs } from "@/lib/spread-prefs";
 
 type TeamPickerProps = {
   teams: Record<string, string[]>;
   selected: Favorite[];
+  spreadsEnabled: SpreadPrefs;
   onToggle: (sportKey: SportKey, teamName: string) => void;
+  onToggleSpreads: (sportKey: SportKey) => void;
   onSave: () => void;
   status: "idle" | "saving" | "saved" | "error";
   message?: string;
@@ -17,7 +20,9 @@ type TeamPickerProps = {
 export function TeamPicker({
   teams,
   selected,
+  spreadsEnabled,
   onToggle,
+  onToggleSpreads,
   onSave,
   status,
   message,
@@ -67,10 +72,25 @@ export function TeamPicker({
       <div className="flex flex-col gap-10">
         {grouped.map((sport) => (
           <section key={sport.key} className="border-t border-white/15 pt-6">
-            <h2 className="font-display text-3xl tracking-wide text-paper">
-              {sport.label}
-              <span className="ml-3 text-base font-sans tracking-normal text-mist">{sport.group}</span>
-            </h2>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <h2 className="font-display text-3xl tracking-wide text-paper">
+                {sport.label}
+                <span className="ml-3 text-base font-sans tracking-normal text-mist">{sport.group}</span>
+              </h2>
+              <label
+                className="flex cursor-pointer items-center gap-2 pb-1 text-sm text-mist"
+                title="Uncheck to request only the moneyline for this league on the daily refresh"
+              >
+                <input
+                  type="checkbox"
+                  checked={spreadsEnabled[sport.key] !== false}
+                  onChange={() => onToggleSpreads(sport.key)}
+                  className="size-4 accent-lime"
+                  aria-label={`Include spreads for ${sport.label}`}
+                />
+                Include spreads
+              </label>
+            </div>
             <ul className="mt-5 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
               {sport.teams.map((team) => {
                 const checked = isSelected(sport.key, team);

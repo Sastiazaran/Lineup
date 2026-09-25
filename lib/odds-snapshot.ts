@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import { OddsQuotaStateId } from "@/lib/constants";
+import { OddsApi, OddsQuotaStateId } from "@/lib/constants";
 import { getDb } from "@/lib/db";
 import { oddsQuotaState, oddsSnapshots } from "@/lib/db/schema";
 import {
@@ -10,6 +10,7 @@ import {
   type OddsEvent,
   type OddsUsage,
 } from "@/lib/odds";
+import { marketsBySportForRefresh } from "@/lib/spread-prefs-store";
 import {
   alreadyFetchedToday,
   collectSportOdds,
@@ -80,12 +81,13 @@ export async function refreshStoredOdds(
     };
   }
 
+  const marketBySport = await marketsBySportForRefresh(sportKeys);
   const result = await collectSportOdds({
     sportKeys,
-    creditsPerCall: oddsCreditsPerCall(),
+    creditsPerCall: (sportKey) => oddsCreditsPerCall(marketBySport.get(sportKey) ?? OddsApi.Markets),
     fetchSport: async (sportKey) => {
       try {
-        const live = await fetchSportOdds(sportKey);
+        const live = await fetchSportOdds(sportKey, marketBySport.get(sportKey) ?? OddsApi.Markets);
         await upsertSnapshot(sportKey, live.events);
         await upsertQuota(live.usage, live.usage.remaining === 0, now);
         return { events: live.events, remaining: live.usage.remaining };

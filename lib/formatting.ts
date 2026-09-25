@@ -60,6 +60,16 @@ export function formatNflKickoff(iso: string): string {
   }).format(new Date(iso));
 }
 
+/**
+ * Spread point for display, or null when the line has no handicap to show.
+ */
+export function displaySpreadPoint(spread: { point?: number } | null | undefined): string | null {
+  if (typeof spread?.point !== "number") {
+    return null;
+  }
+  return formatSpreadPoint(spread.point);
+}
+
 export function formatSpread(line: { point?: number; decimalOdds: number } | null): string {
   if (!line || typeof line.point !== "number") {
     return "—";

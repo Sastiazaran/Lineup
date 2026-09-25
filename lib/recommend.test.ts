@@ -148,6 +148,18 @@ describe("buildDigest", () => {
     expect(digest.games[0]?.winProbabilities.home.probability).toBeGreaterThan(0);
   });
 
+  it("still recommends the moneyline when the event has no spread", () => {
+    const digest = buildDigest(
+      [pumasToluca],
+      [{ sportKey: "soccer_mexico_ligamx", teamName: "Toluca" }],
+      now,
+    );
+    expect(digest.recommendation?.teamName).toBe("Toluca");
+    expect(digest.recommendation?.moneyline.decimalOdds).toBeCloseTo(2.2);
+    expect(digest.recommendation?.spread).toBeNull();
+    expect(digest.games[0]?.spreads).toEqual([]);
+  });
+
   it("ignores shorter odds on teams that are not favorited", () => {
     const digest = buildDigest(
       [americaGuada],

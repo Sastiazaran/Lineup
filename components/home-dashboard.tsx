@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Routes, type SportKey } from "@/lib/constants";
 import type { Favorite } from "@/lib/favorites";
-import { readGuestFavorites, writeGuestFavorites } from "@/lib/guest-client";
+import {
+  readGuestFavorites,
+  readGuestSpreads,
+  writeGuestFavorites,
+  writeGuestSpreads,
+} from "@/lib/guest-client";
+import { defaultSpreadPrefs, type SpreadPrefs } from "@/lib/spread-prefs";
 import { TEAM_ROSTERS } from "@/lib/teams";
 import { InsightsPanel, type DigestView } from "@/components/insights-panel";
 import { ParlayPanel } from "@/components/parlay-panel";
@@ -30,12 +36,19 @@ type HomeDashboardProps = {
   mode: "authenticated" | "guest";
   email?: string;
   initialFavorites: Favorite[];
+  initialSpreadsEnabled: SpreadPrefs;
 };
 
-export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardProps) {
+export function HomeDashboard({
+  mode,
+  email,
+  initialFavorites,
+  initialSpreadsEnabled,
+}: HomeDashboardProps) {
   const isGuest = mode === "guest";
   const [tab, setTab] = useState<Tab>("insights");
   const [selected, setSelected] = useState<Favorite[]>(initialFavorites);
+  const [spreadsEnabled, setSpreadsEnabled] = useState<SpreadPrefs>(initialSpreadsEnabled);
   const [guestReady, setGuestReady] = useState(!isGuest);
   const [teams, setTeams] = useState<Record<string, string[]>>(TEAM_ROSTERS);
   const [digest, setDigest] = useState<DigestView>();
@@ -50,6 +63,7 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
       return;
     }
     setSelected(readGuestFavorites());
+    setSpreadsEnabled(readGuestSpreads());
     setGuestReady(true);
   }, [isGuest]);
 
@@ -100,12 +114,22 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
     setStatus("idle");
   }
 
+  function toggleSpreads(sportKey: SportKey) {
+    setSpreadsEnabled((current) => ({
+      ...defaultSpreadPrefs(),
+      ...current,
+      [sportKey]: current[sportKey] === false,
+    }));
+    setStatus("idle");
+  }
+
   async function save() {
     setStatus("saving");
     setMessage("");
 
     if (isGuest) {
       writeGuestFavorites(selected);
+      writeGuestSpreads(spreadsEnabled);
       setStatus("saved");
       try {
         await loadPreview(selected);
@@ -120,7 +144,7 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
     const response = await fetch(Routes.Favorites, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ favorites: selected }),
+      body: JSON.stringify({ favorites: selected, spreadsEnabled }),
     });
     if (!response.ok) {
       setStatus("error");
@@ -200,7 +224,9 @@ export function HomeDashboard({ mode, email, initialFavorites }: HomeDashboardPr
             <TeamPicker
               teams={teams}
               selected={selected}
+              spreadsEnabled={spreadsEnabled}
               onToggle={toggle}
+              onToggleSpreads={toggleSpreads}
               onSave={() => void save()}
               status={status}
               message={message}

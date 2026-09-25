@@ -1,4 +1,13 @@
-import { integer, jsonb, pgTable, timestamp, uuid, varchar, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  jsonb,
+  pgTable,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -30,6 +39,23 @@ export const favorites = pgTable(
   (table) => [
     uniqueIndex("favorites_user_sport_team").on(table.userId, table.sportKey, table.teamName),
   ],
+);
+
+/**
+ * Per-user spread toggle. A missing row means spreads stay on for that league.
+ * The shared daily refresh includes spreads only when a subscribed user still wants them.
+ */
+export const leagueSpreadPrefs = pgTable(
+  "league_spread_prefs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sportKey: varchar("sport_key", { length: 80 }).notNull(),
+    spreadsEnabled: boolean("spreads_enabled").notNull().default(true),
+  },
+  (table) => [uniqueIndex("league_spread_prefs_user_sport").on(table.userId, table.sportKey)],
 );
 
 export const emailLog = pgTable("email_log", {

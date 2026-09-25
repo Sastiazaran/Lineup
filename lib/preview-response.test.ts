@@ -54,4 +54,49 @@ describe("buildPreviewResponse", () => {
     expect(payload.error).toBe(OddsMessage.QuotaPaused);
     expect(payload.digest.games.length).toBeGreaterThan(0);
   });
+
+  it("returns a moneyline preview when the snapshot has no spread market", async () => {
+    listMock.mockResolvedValue([
+      {
+        sportKey: SportKey.Nfl,
+        fetchedAt: new Date("2026-09-01T00:00:00.000Z"),
+        events: [
+          {
+            id: "nfl-1",
+            sport_key: SportKey.Nfl,
+            sport_title: "NFL",
+            commence_time: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+            home_team: "Kansas City Chiefs",
+            away_team: "Buffalo Bills",
+            bookmakers: [
+              {
+                key: "draftkings",
+                title: "DraftKings",
+                last_update: new Date().toISOString(),
+                markets: [
+                  {
+                    key: "h2h",
+                    outcomes: [
+                      { name: "Kansas City Chiefs", price: 1.8 },
+                      { name: "Buffalo Bills", price: 2.1 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+    exhaustedMock.mockResolvedValue(false);
+
+    const payload = await buildPreviewResponse([
+      { sportKey: SportKey.Nfl, teamName: "Kansas City Chiefs" },
+    ]);
+
+    expect(payload.digest.recommendation?.teamName).toBe("Kansas City Chiefs");
+    expect(payload.digest.recommendation?.spread).toBeNull();
+    expect(payload.digest.games[0]?.spreads).toEqual([]);
+    expect(payload.digest.games[0]?.lines.length).toBeGreaterThan(0);
+  });
 });

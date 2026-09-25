@@ -1,7 +1,7 @@
 "use client";
 
 import { Routes } from "@/lib/constants";
-import { clearGuestFavorites } from "@/lib/guest-client";
+import { clearGuestFavorites, clearGuestSpreads } from "@/lib/guest-client";
 
 type SignOutButtonProps = {
   isGuest?: boolean;
@@ -11,6 +11,7 @@ export function SignOutButton({ isGuest }: SignOutButtonProps) {
   function handleSignOut() {
     if (isGuest) {
       clearGuestFavorites();
+      clearGuestSpreads();
     }
   }
 

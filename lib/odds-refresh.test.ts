@@ -84,6 +84,35 @@ describe("collectSportOdds", () => {
     expect(result.events).toEqual([eplEvent, laligaSnap]);
   });
 
+  it("uses each league's own cost and still fetches a cheaper league later", async () => {
+    const nflSnap = { ...laligaSnap, id: "nfl-snap", sport_key: "americanfootball_nfl" };
+    const fetchSport = vi.fn(async (sportKey: string) => {
+      if (sportKey === "soccer_epl") {
+        return { events: [eplEvent], remaining: 1 };
+      }
+      return { events: [{ ...eplEvent, id: "nfl-live", sport_key: sportKey }], remaining: 0 };
+    });
+    const loadSnapshot = vi.fn(async () => [nflSnap]);
+    const creditsPerCall = (sportKey: string) => (sportKey === "americanfootball_nfl" ? 1 : 2);
+
+    const result = await collectSportOdds({
+      sportKeys: ["soccer_epl", "soccer_spain_la_liga", "americanfootball_nfl"],
+      fetchSport,
+      loadSnapshot,
+      creditsPerCall,
+    });
+
+    expect(fetchSport.mock.calls.map((call) => call[0])).toEqual([
+      "soccer_epl",
+      "americanfootball_nfl",
+    ]);
+    expect(result.snapshotKeys).toEqual(["soccer_spain_la_liga"]);
+    expect(result.fetchedKeys).toEqual(["soccer_epl", "americanfootball_nfl"]);
+    expect(result.quotaExhausted).toBe(true);
+    expect(creditsPerCall("soccer_spain_la_liga")).toBe(2);
+    expect(creditsPerCall("americanfootball_nfl")).toBe(1);
+  });
+
   it("treats remaining=0 without error_code as quota exhausted", async () => {
     const fetchSport = vi.fn(async () => {
       throw new OddsApiRequestError("soccer_epl", 401, "quota", null, {

@@ -97,7 +97,26 @@ describe("fetchSportOdds", () => {
     expect(calledUrl).toContain("/sports/soccer_epl/odds");
     expect(calledUrl).toContain("regions=eu");
     expect(calledUrl).not.toContain("regions=us");
+    expect(new URL(calledUrl).searchParams.get("markets")).toBe("h2h,spreads");
     expect(fetchMock.mock.calls[0]?.[1]).toEqual({ cache: "no-store" });
+  });
+
+  it("requests moneyline only when spreads are omitted", async () => {
+    vi.stubEnv("ODDS_API_KEY", "test-key");
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "x-requests-remaining": "9", "x-requests-last": "1" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchSportOdds("americanfootball_nfl", "h2h");
+
+    const calledUrl = String(fetchMock.mock.calls[0]?.[0]);
+    expect(new URL(calledUrl).searchParams.get("markets")).toBe("h2h");
+    expect(new URL(calledUrl).searchParams.get("regions")).toBe("us");
+    expect(oddsCreditsPerCall("h2h")).toBe(1);
   });
 
   it("throws OddsApiRequestError with the API error_code", async () => {

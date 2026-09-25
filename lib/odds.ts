@@ -80,10 +80,12 @@ export function regionsForSport(sportKey: string): string {
 }
 
 /**
- * Credits charged for one `/odds` call with the configured markets and a single region.
+ * Credits charged for one `/odds` call: one per market, in a single region.
+ * Empty (off-season) responses are free at the API, but callers budget the full market count.
+ * @param markets Comma-separated market keys, defaulting to `h2h,spreads`
  */
-export function oddsCreditsPerCall(): number {
-  return OddsApi.Markets.split(",").filter(Boolean).length;
+export function oddsCreditsPerCall(markets: string = OddsApi.Markets): number {
+  return markets.split(",").filter(Boolean).length;
 }
 
 /**
@@ -124,18 +126,22 @@ export function isOutOfUsageCredits(error: unknown): boolean {
 }
 
 /**
- * Fetches upcoming moneylines and spreads for one sport. Callers must persist
- * the result; preview must not use this. Uses `cache: "no-store"` so the daily
- * cron is the source of truth instead of a 15-minute fetch cache.
+ * Fetches upcoming lines for one sport. Callers must persist the result; preview
+ * must not use this. Uses `cache: "no-store"` so the daily cron is the source of
+ * truth instead of a 15-minute fetch cache.
  * @param sportKey The Odds API sport key, e.g. `soccer_epl`
+ * @param markets Comma-separated markets. Pass `h2h` to skip spreads and spend 1 credit.
  * @throws {OddsApiRequestError} When the HTTP response is not OK
  */
-export async function fetchSportOdds(sportKey: string): Promise<SportOddsResult> {
+export async function fetchSportOdds(
+  sportKey: string,
+  markets: string = OddsApi.Markets,
+): Promise<SportOddsResult> {
   const apiKey = requireEnv(EnvKey.OddsApiKey);
   const url = new URL(`${OddsApi.BaseUrl}/sports/${sportKey}/odds`);
   url.searchParams.set("apiKey", apiKey);
   url.searchParams.set("regions", regionsForSport(sportKey));
-  url.searchParams.set("markets", OddsApi.Markets);
+  url.searchParams.set("markets", markets);
   url.searchParams.set("oddsFormat", OddsApi.OddsFormat);
 
   const response = await fetch(url, { cache: "no-store" });

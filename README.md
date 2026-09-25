@@ -4,7 +4,7 @@ Daily sports-odds email for the teams you actually bet. Pick favorites on the we
 
 The 2021 Codere scraper in `legacy/` is retired.
 
-Odds are fetched **once per day** by the digest cron, saved in Postgres, and reused by the dashboard. Preview never calls The Odds API. On `OUT_OF_USAGE_CREDITS`, later sports use the last-good snapshot. A second cron run the same UTC day skips live calls. The next day probes one sport to see if the quota reset; if it is still spent, the rest of that run stays on the snapshot. Soccer uses the `eu` region and US leagues use `us`, so each call costs 2 credits (`h2h` + `spreads`). Empty (off-season) responses are free.
+Odds are fetched **once per day** by the digest cron, saved in Postgres, and reused by the dashboard. Preview never calls The Odds API. On `OUT_OF_USAGE_CREDITS`, later sports use the last-good snapshot. A second cron run the same UTC day skips live calls. The next day probes one sport to see if the quota reset; if it is still spent, the rest of that run stays on the snapshot. Soccer uses the `eu` region and US leagues use `us`. Each league costs one credit per market in that single region. Spreads stay on for every league until a user unticks **Include spreads** next to that league. The shared refresh requests `spreads` for a league only when at least one subscribed user still wants them; otherwise that league is `h2h` only. A league with games therefore costs 2 credits (`h2h` + `spreads`) or 1 credit (`h2h`). With no subscribers, every league is moneyline-only. Empty (off-season) responses are free.
 
 Tino reads that same snapshot for upcoming games. Completed scores are fetched only for sports with pending picks that have already started (`/scores?daysFrom=3`, 2 credits per sport). Those scores are cached for 30 minutes so opening the tab does not spend credits every time. Soccer picks can be home, away, or draw. Picks lock at kickoff. Sign-in is required to save the record; guest mode does not.
 
@@ -18,7 +18,7 @@ Tino reads that same snapshot for upcoming games. Completed scores are fetched o
 ## Setup
 
 1. Copy `.env.example` to `.env.local` and fill in the keys.
-2. Create a Neon database and run `npm run db:push` (or apply `drizzle/0000_init.sql`, `drizzle/0001_odds_snapshots.sql`, and `drizzle/0002_picks.sql`).
+2. Create a Neon database and run `npm run db:push` (or apply `drizzle/0000_init.sql`, `drizzle/0001_odds_snapshots.sql`, `drizzle/0002_picks.sql`, and `drizzle/0003_league_spread_prefs.sql`).
 3. Create an Odds API key (free tier is enough to start).
 4. Create a Resend API key. Verify a domain, or use `beth.t@example.com` in development.
 5. Set `SESSION_SECRET` to a long random string and `CRON_SECRET` to another.
@@ -28,7 +28,7 @@ Without `RESEND_API_KEY` in development, the magic-link URL is printed in the se
 
 ## Digest rule
 
-Email goes out daily (Vercel Cron at 14:00 UTC) only when a favorite team has a game in the next 48 hours. That cron is also the only Odds API refresh: it stores lines for every catalog league, then the web preview reads that snapshot. The recommended bet is the favorited team with the shortest consensus moneyline (highest implied probability). Consensus is the average of returned bookmakers. That team’s consensus spread is included when the API returns one.
+Email goes out daily (Vercel Cron at 14:00 UTC) only when a favorite team has a game in the next 48 hours. That cron is also the only Odds API refresh: it stores lines for every catalog league, then the web preview reads that snapshot. The recommended bet is the favorited team with the shortest consensus moneyline (highest implied probability). Consensus is the average of returned bookmakers. That team’s consensus spread is included when the snapshot has one. If spreads were not requested for the league, the email and the web preview show the moneyline only.
 
 ## Deploy on Vercel
 

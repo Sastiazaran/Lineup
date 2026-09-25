@@ -57,6 +57,14 @@ function htmlTemplate(appUrl: string, unsubscribeUrl: string, digest: DigestCont
     pick?.spread && typeof pick.spread.point === "number"
       ? explainSpread(pick.teamName, pick.spread.point, spreadUnitForSport(pick.event.sport_key))
       : null;
+  const heroSpread =
+    pick?.spread && typeof pick.spread.point === "number"
+      ? `<br/>Spread ${escapeHtml(formatSpread(pick.spread))}${
+          spreadNote
+            ? `<br/><span style="font-size:13px;color:#9fb39a;">${escapeHtml(spreadNote)}</span>`
+            : ""
+        }`
+      : "";
   const hero = pick
     ? `
       <tr>
@@ -73,8 +81,7 @@ function htmlTemplate(appUrl: string, unsubscribeUrl: string, digest: DigestCont
         <td style="padding:0 28px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#d5e4d2;">
           vs ${escapeHtml(opponentOf(pick))} · ${escapeHtml(pick.event.sport_title)}<br/>
           ML ${formatOdds(pick.moneyline.decimalOdds)} (${formatPercent(pick.moneyline.impliedProbability)} implied)
-          · Spread ${escapeHtml(formatSpread(pick.spread))}
-          ${spreadNote ? `<br/><span style="font-size:13px;color:#9fb39a;">${escapeHtml(spreadNote)}</span>` : ""}
+          ${heroSpread}
           <br/>${escapeHtml(formatKickoff(pick.event.commence_time))}
         </td>
       </tr>`
@@ -173,8 +180,8 @@ function gameRow(game: GamePreview): string {
   const homeMl = game.lines.find((line) => line.name === game.event.home_team);
   const awayMl = game.lines.find((line) => line.name === game.event.away_team);
   const draw = game.lines.find((line) => line.name.toLowerCase() === "draw");
-  const homeSpread = game.spreads.find((line) => line.name === game.event.home_team);
-  const awaySpread = game.spreads.find((line) => line.name === game.event.away_team);
+  const homeSpread = spreadLineFor(game, game.event.home_team);
+  const awaySpread = spreadLineFor(game, game.event.away_team);
   const unit = spreadUnitForSport(game.event.sport_key);
   const homeSpreadNote =
     homeSpread && typeof homeSpread.point === "number"
@@ -202,11 +209,9 @@ function gameRow(game: GamePreview): string {
         <div style="font-size:16px;font-weight:700;">${escapeHtml(game.event.away_team)} at ${escapeHtml(game.event.home_team)}</div>
         ${winBarHtml(barOutcomes)}
         <div style="font-size:14px;margin-top:8px;color:#d5e4d2;">
-          ${escapeHtml(game.event.away_team)} ML ${homeOrDash(awayMl)} · spread ${escapeHtml(formatSpread(awaySpread ?? null))}
-          ${awaySpreadNote ? `<br/><span style="font-size:12px;color:#9fb39a;">${escapeHtml(awaySpreadNote)}</span>` : ""}
+          ${teamOddsHtml(game.event.away_team, awayMl, awaySpread, awaySpreadNote)}
           <br/>
-          ${escapeHtml(game.event.home_team)} ML ${homeOrDash(homeMl)} · spread ${escapeHtml(formatSpread(homeSpread ?? null))}
-          ${homeSpreadNote ? `<br/><span style="font-size:12px;color:#9fb39a;">${escapeHtml(homeSpreadNote)}</span>` : ""}
+          ${teamOddsHtml(game.event.home_team, homeMl, homeSpread, homeSpreadNote)}
           ${draw ? `<br/>Draw ML ${formatOdds(draw.decimalOdds)}` : ""}
         </div>
       </td>
@@ -217,13 +222,40 @@ function homeOrDash(line: { decimalOdds: number } | undefined): string {
   return line ? formatOdds(line.decimalOdds) : "—";
 }
 
+function spreadLineFor(
+  game: GamePreview,
+  teamName: string,
+): { point?: number; decimalOdds: number } | null {
+  const line = game.spreads.find((item) => item.name === teamName);
+  if (!line || typeof line.point !== "number") {
+    return null;
+  }
+  return line;
+}
+
+function teamOddsHtml(
+  teamName: string,
+  moneyline: { decimalOdds: number } | undefined,
+  spread: { point?: number; decimalOdds: number } | null,
+  note: string | null,
+): string {
+  const ml = `${escapeHtml(teamName)} ML ${homeOrDash(moneyline)}`;
+  if (!spread || typeof spread.point !== "number") {
+    return ml;
+  }
+  const noteHtml = note
+    ? `<br/><span style="font-size:12px;color:#9fb39a;">${escapeHtml(note)}</span>`
+    : "";
+  return `${ml} · spread ${escapeHtml(formatSpread(spread))}${noteHtml}`;
+}
+
 function textTemplate(appUrl: string, unsubscribeUrl: string, digest: DigestContent): string {
   const pick = digest.recommendation;
   const lines = [
     Brand.Name.toUpperCase(),
     "",
     pick
-      ? `Recommended bet: ${pick.teamName} to win vs ${opponentOf(pick)} (ML ${formatOdds(pick.moneyline.decimalOdds)}, spread ${formatSpread(pick.spread)})`
+      ? `Recommended bet: ${pick.teamName} to win vs ${opponentOf(pick)} (${recommendationOddsText(pick)})`
       : "No recommended bet this window.",
     "",
   ];
@@ -259,6 +291,14 @@ function textTemplate(appUrl: string, unsubscribeUrl: string, digest: DigestCont
   }
   lines.push("", `Manage favorites: ${appUrl}`, `Unsubscribe: ${unsubscribeUrl}`);
   return lines.join("\n");
+}
+
+function recommendationOddsText(pick: RecommendedBet): string {
+  const moneyline = `ML ${formatOdds(pick.moneyline.decimalOdds)}`;
+  if (!pick.spread || typeof pick.spread.point !== "number") {
+    return moneyline;
+  }
+  return `${moneyline}, spread ${formatSpread(pick.spread)}`;
 }
 
 function escapeHtml(value: string): string {
